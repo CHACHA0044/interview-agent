@@ -41,7 +41,7 @@ import {
   Layers,
   ChevronRight,
 } from "lucide-react";
-import { Button, Card, Badge } from "@/components/ui";
+import { Button, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { APP_NAME } from "@/constants";
 
