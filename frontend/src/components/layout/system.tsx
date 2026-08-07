@@ -96,8 +96,8 @@ export function PageHeading({
   align = "left",
 }: PageHeadingProps) {
   return (
-    <header className={cn("page-heading", align === "center" && "text-center items-center")}> 
-      <div className="stack stack-sm max-w-reading">
+    <header className={cn("page-heading", align === "center" && "!flex-col !items-center !text-center !justify-center !border-b-0 !pb-0")}> 
+      <div className={cn("stack stack-sm max-w-reading", align === "center" && "mx-auto items-center text-center")}>
         {eyebrow}
         <h1 className="heading-display">{title}</h1>
         {description ? <p className="text-body text-[#A3A3A3]">{description}</p> : null}

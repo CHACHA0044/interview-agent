@@ -168,6 +168,7 @@ export function LandingPage() {
       <Section>
         <LayoutContainer size="dashboard" className="stack stack-lg">
           <PageHeading
+            align="center"
             eyebrow={<span className="text-xs font-mono text-[#D4AF37] uppercase tracking-widest">Multi-Agent Workflow</span>}
             title="Adaptive Assessment Pipeline"
             description="From context intake to targeted evaluation and executive feedback synthesis."
@@ -194,7 +195,7 @@ export function LandingPage() {
       </Section>
 
       <Section>
-        <LayoutContainer size="content" className="stack stack-lg">
+        <LayoutContainer size="dashboard" className="stack stack-lg">
           <PageHeading
             align="center"
             title="Engineered for Rigorous Assessment"
