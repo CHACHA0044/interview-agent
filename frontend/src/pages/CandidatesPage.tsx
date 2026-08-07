@@ -30,7 +30,7 @@ Uses global max-w-[1440px] px-6 sm:px-10 lg:px-12 container system.
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Search, UserCheck, Play, Filter, Award } from "lucide-react";
-import { Card, Badge, Input, Button, SkeletonCard, EmptyState, Progress } from "@/components/ui";
+import { Badge, Input, Button, SkeletonCard, EmptyState, Progress } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useCandidates } from "@/hooks/use-candidates";
 import type { Candidate } from "@/types";

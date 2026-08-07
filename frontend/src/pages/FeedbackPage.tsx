@@ -41,7 +41,7 @@ import {
   ArrowRight,
   Target,
 } from "lucide-react";
-import { Card, Badge, Progress, Button } from "@/components/ui";
+import { Badge, Progress, Button } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useInterviewStore } from "@/stores/interview.store";
 import { MOCK_FEEDBACK } from "@/mock";

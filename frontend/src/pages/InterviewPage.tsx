@@ -36,14 +36,11 @@ import {
   Bot,
   User,
   Clock,
-  Sparkles,
   BarChart2,
-  MicOff,
   BookOpen,
   Award,
-  Terminal,
 } from "lucide-react";
-import { Button, Textarea, Card, Badge, Progress } from "@/components/ui";
+import { Button, Textarea, Badge, Progress } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useTimer } from "@/hooks/use-timer";
@@ -56,13 +53,12 @@ export function InterviewPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
 
   const {
-    activeSession,
+    session,
     messages,
-    candidate,
-    isGenerating,
+    isAgentTyping,
     feedback,
     sendMessage,
-    endSession,
+    endInterview,
   } = useInterviewStore();
 
   const [inputAnswer, setInputAnswer] = useState("");
@@ -72,20 +68,22 @@ export function InterviewPage() {
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const durationMinutes = activeSession?.config.durationMinutes || 30;
-  const { formattedTime, percentRemaining } = useTimer({
-    initialSeconds: durationMinutes * 60,
-    isActive: !!activeSession && activeSession.status === "in_progress",
-  });
+  const { formattedTime, elapsedSeconds, isRunning, start } = useTimer();
+
+  useEffect(() => {
+    if (!isRunning) {
+      start();
+    }
+  }, [isRunning, start]);
 
   useEffect(() => {
     if (chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
-  }, [messages, isGenerating]);
+  }, [messages, isAgentTyping]);
 
   const handleSend = async () => {
-    if (!inputAnswer.trim() || isGenerating) return;
+    if (!inputAnswer.trim() || isAgentTyping) return;
     const text = inputAnswer;
     setInputAnswer("");
     await sendMessage(text);
@@ -101,7 +99,7 @@ export function InterviewPage() {
   const handleConfirmEndSession = async () => {
     setIsConcluding(true);
     try {
-      await endSession();
+      await endInterview();
       setIsEndModalOpen(false);
       navigate(`/interview/${sessionId}/feedback`);
     } catch (err) {
@@ -110,6 +108,8 @@ export function InterviewPage() {
       setIsConcluding(false);
     }
   };
+
+  const activeCandidate = session?.candidate;
 
   return (
     <PageTransition>
@@ -160,8 +160,8 @@ export function InterviewPage() {
                   <User className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#FFFFFF]">{candidate?.member.name || "Candidate"}</h3>
-                  <span className="text-[11px] text-[#A3A3A3] block">{candidate?.member.jobRole}</span>
+                  <h3 className="text-sm font-bold text-[#FFFFFF]">{activeCandidate?.member.name || "Cohort Graduate"}</h3>
+                  <span className="text-[11px] text-[#A3A3A3] block">{activeCandidate?.member.jobRole || "AI Engineer"}</span>
                 </div>
               </div>
 
@@ -172,11 +172,11 @@ export function InterviewPage() {
                 <div className="bg-[#141414] p-3 rounded-xl border border-[#222222] space-y-2 text-xs">
                   <div className="flex justify-between">
                     <span className="text-[#737373]">Missions Completed</span>
-                    <span className="text-[#FFFFFF] font-mono font-semibold">{candidate?.signals.missionsCompleted} / 31</span>
+                    <span className="text-[#FFFFFF] font-mono font-semibold">{activeCandidate?.signals?.missionsCompleted ?? 31} / 31</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#737373]">Commit Days</span>
-                    <span className="text-[#D4AF37] font-mono font-semibold">{candidate?.signals.commitDays} Days</span>
+                    <span className="text-[#D4AF37] font-mono font-semibold">{activeCandidate?.signals?.commitDays ?? 28} Days</span>
                   </div>
                 </div>
               </div>
@@ -186,7 +186,7 @@ export function InterviewPage() {
                   Target Curriculum Scope
                 </span>
                 <div className="space-y-2">
-                  {activeSession?.config.topics.map((t) => (
+                  {(session?.topicsCovered || ["Vector Search & Indexing", "RAG Architecture & HyDE"]).map((t) => (
                     <div key={t} className="flex items-center gap-2 text-xs text-[#FFFFFF] bg-[#141414] p-2.5 rounded-xl border border-[#222222]">
                       <BookOpen className="h-3.5 w-3.5 text-[#D4AF37] shrink-0" />
                       <span className="truncate">{t}</span>
@@ -239,7 +239,7 @@ export function InterviewPage() {
                 );
               })}
 
-              {isGenerating && <TypingIndicator />}
+              {isAgentTyping && <TypingIndicator />}
             </div>
 
             {/* Fixed Bottom Input Bar */}
@@ -254,7 +254,7 @@ export function InterviewPage() {
                 />
                 <Button
                   onClick={handleSend}
-                  disabled={!inputAnswer.trim() || isGenerating}
+                  disabled={!inputAnswer.trim() || isAgentTyping}
                   icon={<Send className="h-4 w-4" />}
                   className="h-[50px] px-5"
                 >
@@ -277,9 +277,9 @@ export function InterviewPage() {
 
               <div className="space-y-3">
                 <span className="text-[10px] font-mono text-[#737373] uppercase tracking-wider block">
-                  Time Remaining Gauge
+                  Elapsed Duration Progress
                 </span>
-                <Progress value={percentRemaining} size="md" color="gold" showLabel />
+                <Progress value={Math.min(100, Math.round((elapsedSeconds / 1800) * 100))} size="md" color="gold" showLabel />
               </div>
 
               <div className="space-y-3">

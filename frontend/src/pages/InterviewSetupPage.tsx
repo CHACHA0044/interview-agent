@@ -9,7 +9,7 @@ Guided 2-column interview configuration workflow page.
 
 Responsibilities:
 - Left Column: Sticky candidate identity card and quick launch action
-- Right Column: Grouped step-by-step form controls (Topics, Duration, Rigor, Guardrails)
+- Right Column: Grouped step-by-step form controls (Topics, Duration, Rigor)
 - Form validation via React Hook Form & Zod schema
 
 Connected Files:
@@ -33,26 +33,33 @@ import { useNavigate, useLocation } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Play, Settings2, ShieldCheck, Check, UserCheck, Layers, Clock, Sparkles } from "lucide-react";
-import { Card, Button, Input, Badge } from "@/components/ui";
+import { Play, Settings2, ShieldCheck, Check, UserCheck, Layers, Clock } from "lucide-react";
+import { Button, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useCandidates } from "@/hooks/use-candidates";
 import { useInterviewStore } from "@/stores/interview.store";
-import { MOCK_INTERVIEW_TOPICS } from "@/mock";
 import type { InterviewSetupFormData } from "@/types";
+
+const AVAILABLE_TOPICS = [
+  { name: "Vector Search & Indexing", desc: "HNSW, IVF, Cosine similarity, Quantization" },
+  { name: "RAG Architecture & HyDE", desc: "Chunking, Re-ranking, Dense/Sparse Retrieval" },
+  { name: "Multi-Agent Orchestration", desc: "State graphs, Tool calling, Supervisor patterns" },
+  { name: "MCP Protocol Integration", desc: "Model Context Protocol, Tool Registries" },
+  { name: "Production K8s & Observability", desc: "GPU scaling, Latency monitoring, Tracing" },
+];
 
 const setupSchema = z.object({
   candidateId: z.string().min(1, "Please select a candidate"),
-  durationMinutes: z.number().min(5).max(60),
-  difficulty: z.enum(["easy", "medium", "hard", "adaptive"]),
-  topics: z.array(z.string()).min(1, "Select at least one curriculum topic"),
+  questionCount: z.number().min(1).max(20),
+  focusTopics: z.array(z.string()).min(1, "Select at least one focus topic"),
+  duration: z.number().min(5).max(60),
 });
 
 export function InterviewSetupPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: candidates } = useCandidates();
-  const { startSession, isInitializing } = useInterviewStore();
+  const { startInterview, isLoading } = useInterviewStore();
 
   const preselectedCandidateId = (location.state as { candidateId?: string })?.candidateId;
 
@@ -69,15 +76,14 @@ export function InterviewSetupPage() {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<InterviewSetupFormData>({
     resolver: zodResolver(setupSchema),
     defaultValues: {
       candidateId: selectedCandidateId,
-      durationMinutes: 30,
-      difficulty: "adaptive",
-      topics: selectedTopics,
+      questionCount: 5,
+      focusTopics: selectedTopics,
+      duration: 30,
     },
   });
 
@@ -85,8 +91,11 @@ export function InterviewSetupPage() {
 
   useEffect(() => {
     if (candidates && candidates.length > 0 && !selectedCandidateId) {
-      setSelectedCandidateId(candidates[0].member.id);
-      setValue("candidateId", candidates[0].member.id);
+      const firstId = candidates[0]?.member.id;
+      if (firstId) {
+        setSelectedCandidateId(firstId);
+        setValue("candidateId", firstId);
+      }
     }
   }, [candidates, selectedCandidateId, setValue]);
 
@@ -96,15 +105,16 @@ export function InterviewSetupPage() {
       : [...selectedTopics, topicName];
 
     setSelectedTopics(updated);
-    setValue("topics", updated, { shouldValidate: true });
+    setValue("focusTopics", updated, { shouldValidate: true });
   };
 
-  const onSubmit = async (data: InterviewSetupFormData) => {
+  const onSubmit = async (_data: InterviewSetupFormData) => {
+    if (!selectedCandidate) return;
     try {
-      const session = await startSession(data);
-      navigate(`/interview/${session.sessionId}`);
+      await startInterview(selectedCandidate);
+      navigate(`/interview/sess_${selectedCandidate.member.id}`);
     } catch (err) {
-      console.error("Failed to start session:", err);
+      console.error("Failed to start interview:", err);
     }
   };
 
@@ -183,7 +193,7 @@ export function InterviewSetupPage() {
                   variant="primary"
                   size="lg"
                   className="w-full justify-center shadow-xl shadow-[#D4AF37]/10"
-                  isLoading={isInitializing}
+                  isLoading={isLoading}
                   icon={<Play className="h-4 w-4" />}
                 >
                   Launch Assessment Session
@@ -205,14 +215,14 @@ export function InterviewSetupPage() {
                 </span>
               </div>
 
-              {errors.topics && (
+              {errors.focusTopics && (
                 <p className="text-xs text-[#EF4444] bg-[#EF4444]/10 p-3 rounded-xl border border-[#EF4444]/20">
-                  {errors.topics.message}
+                  {errors.focusTopics.message}
                 </p>
               )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {MOCK_INTERVIEW_TOPICS.map((topic) => {
+                {AVAILABLE_TOPICS.map((topic) => {
                   const isSelected = selectedTopics.includes(topic.name);
                   return (
                     <div
@@ -226,7 +236,7 @@ export function InterviewSetupPage() {
                     >
                       <div className="space-y-1">
                         <span className="text-xs font-bold block">{topic.name}</span>
-                        <p className="text-[11px] text-[#737373] leading-relaxed">{topic.description}</p>
+                        <p className="text-[11px] text-[#737373] leading-relaxed">{topic.desc}</p>
                       </div>
                       <div
                         className={`h-5 w-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
@@ -253,7 +263,7 @@ export function InterviewSetupPage() {
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-[#A3A3A3] block">Target Session Duration</label>
                   <select
-                    {...register("durationMinutes", { valueAsNumber: true })}
+                    {...register("duration", { valueAsNumber: true })}
                     className="w-full px-4 py-3 rounded-xl bg-[#141414] border border-[#222222] text-xs text-[#FFFFFF] focus:outline-none focus:border-[#D4AF37]"
                   >
                     <option value={15}>15 Minutes (Fast Screen)</option>
@@ -263,14 +273,14 @@ export function InterviewSetupPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-medium text-[#A3A3A3] block">Evaluation Calibration</label>
+                  <label className="text-xs font-medium text-[#A3A3A3] block">Question Count Target</label>
                   <select
-                    {...register("difficulty")}
+                    {...register("questionCount", { valueAsNumber: true })}
                     className="w-full px-4 py-3 rounded-xl bg-[#141414] border border-[#222222] text-xs text-[#FFFFFF] focus:outline-none focus:border-[#D4AF37]"
                   >
-                    <option value="adaptive">Adaptive (Auto-Calibrate Difficulty)</option>
-                    <option value="hard">Hard (Strict Senior Level)</option>
-                    <option value="medium">Medium (Standard Cohort Level)</option>
+                    <option value={3}>3 Questions (Express)</option>
+                    <option value={5}>5 Questions (Standard)</option>
+                    <option value={8}>8 Questions (In-depth)</option>
                   </select>
                 </div>
               </div>
