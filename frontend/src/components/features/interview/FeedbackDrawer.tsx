@@ -69,6 +69,7 @@ export function FeedbackDrawer({
                 </h2>
                 <button
                   onClick={onClose}
+                  aria-label="Close telemetry panel"
                   className="p-1.5 rounded-lg text-[#737373] hover:text-[#FFFFFF] hover:bg-[#171717] transition-colors cursor-pointer"
                 >
                   <X className="h-5 w-5" />
