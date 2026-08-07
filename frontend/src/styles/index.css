@@ -29,7 +29,7 @@ Component-specific styles should use Tailwind utilities inline.
 */
 
 @import "tailwindcss";
-@config "../tailwind.config.ts";
+@config "../../tailwind.config.ts";
 
 /* ========================================
    Design System: Custom Properties
