@@ -59,6 +59,9 @@ export function EndInterviewModal({
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="end-interview-title"
           className="relative w-full max-w-md rounded-2xl bg-[#111111] border border-[#262626] p-8 space-y-6 z-10 shadow-2xl shadow-black/60"
         >
           <div className="flex items-start gap-4">
@@ -66,7 +69,7 @@ export function EndInterviewModal({
               <AlertTriangle className="h-6 w-6" />
             </div>
             <div className="space-y-1.5">
-              <h3 className="text-lg font-bold text-[#FFFFFF]">Conclude Assessment?</h3>
+              <h3 id="end-interview-title" className="text-lg font-bold text-[#FFFFFF]">Conclude Assessment?</h3>
               <p className="text-xs text-[#A3A3A3] leading-relaxed">
                 Ending now will freeze response recording and synthesize the final performance evaluation report.
               </p>

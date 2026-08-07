@@ -1,121 +1,97 @@
-/*
-========================================================
-
-File:
-pages/AboutPage.tsx
-
-Purpose:
-Architecture overview and project documentation page.
-
-Responsibilities:
-- Explains the Interview Agent system design and hackathon context
-- Displays technical architecture pillar cards
-- Shows frontend technology stack breakdown
-
-Connected Files:
-- src/app/router.tsx (route: /about)
-- src/components/ui/
-
-Depends On:
-- react
-- lucide-react
-
-Notes:
-Adheres to Black & Gold design system with clean information hierarchy.
-
-========================================================
-*/
-
 import { Brain, Cpu, Database, Layers, ShieldCheck, Sparkles, Terminal } from "lucide-react";
-import { Card, Badge } from "@/components/ui";
+import { Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface, Stack } from "@/components/layout/system";
 
 export function AboutPage() {
   return (
     <PageTransition>
-      <div className="max-w-6xl mx-auto px-6 sm:px-8 space-y-12">
-        {/* Header */}
-        <div className="border-b border-[#262626] pb-8 space-y-2">
-          <Badge variant="gold" className="px-3 py-1 font-mono text-[11px]">
-            <Sparkles className="h-3.5 w-3.5 mr-1 text-[#D4AF37]" />
-            System Architecture
-          </Badge>
-          <h1 className="text-4xl font-extrabold text-[#FFFFFF] tracking-tight">
-            About Interview Agent
-          </h1>
-          <p className="text-sm text-[#A3A3A3] max-w-2xl leading-relaxed">
-            An adaptive technical evaluation platform engineered for Enterprise AI Cohort graduates,
-            powered by multi-agent orchestration and precision assessment models.
+      <Section density="tight">
+        <LayoutContainer size="reading" className="stack stack-lg">
+          <PageHeading
+            eyebrow={
+              <Badge variant="gold" className="px-3 py-1 font-mono text-[11px] w-fit">
+                <Sparkles className="h-3.5 w-3.5 mr-1 text-[#D4AF37]" />
+                System Architecture
+              </Badge>
+            }
+            title="Architecture Overview"
+            description="An adaptive technical evaluation platform engineered for Enterprise AI Cohort graduates, powered by multi-agent orchestration and precision assessment models."
+          />
+
+          <p className="text-sm text-[#A3A3A3] leading-relaxed max-w-reading">
+            This route preserves existing business behavior while documenting the architecture model, platform boundaries, and frontend foundation.
           </p>
-        </div>
+        </LayoutContainer>
+      </Section>
 
-        {/* Architecture Pillars */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card variant="default" hover className="space-y-4 p-8 group">
-            <div className="h-10 w-10 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37] group-hover:border-[#D4AF37]/40 transition-colors">
-              <Brain className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-semibold text-[#FFFFFF] group-hover:text-[#D4AF37] transition-colors">
-              Adaptive Dialogue Engine
-            </h3>
-            <p className="text-xs text-[#A3A3A3] leading-relaxed">
-              Dynamically tailors follow-up questions based on candidate responses, curriculum progress, and identified skill gaps in real-time.
-            </p>
-          </Card>
+      <Section>
+        <LayoutContainer size="content">
+          <LayoutGrid gap="md">
+            {[
+              {
+                icon: Brain,
+                title: "Adaptive Dialogue Engine",
+                text: "Dynamically tailors follow-up questions based on candidate responses and identified skill gaps.",
+              },
+              {
+                icon: Layers,
+                title: "Curriculum Grounded Assessment",
+                text: "Evaluates candidates across 31 modules spanning vector databases, RAG, agentic tools, MCP, and K8s.",
+              },
+              {
+                icon: ShieldCheck,
+                title: "Objective Scoring Guardrails",
+                text: "Generates holistic evaluation reports with strengths, gaps, and customized growth trajectories.",
+              },
+            ].map((pillar) => {
+              const Icon = pillar.icon;
+              return (
+                <Surface key={pillar.title} className="col-span-4 md:col-span-4 xl:col-span-4 h-full" padding="lg">
+                  <Stack gap="sm">
+                    <span className="h-10 w-10 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37]">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <h2 className="text-base font-semibold text-white">{pillar.title}</h2>
+                    <p className="text-xs text-[#A3A3A3] leading-relaxed">{pillar.text}</p>
+                  </Stack>
+                </Surface>
+              );
+            })}
+          </LayoutGrid>
+        </LayoutContainer>
+      </Section>
 
-          <Card variant="default" hover className="space-y-4 p-8 group">
-            <div className="h-10 w-10 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37] group-hover:border-[#D4AF37]/40 transition-colors">
-              <Layers className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-semibold text-[#FFFFFF] group-hover:text-[#D4AF37] transition-colors">
-              Curriculum Grounded Assessment
-            </h3>
-            <p className="text-xs text-[#A3A3A3] leading-relaxed">
-              Evaluates candidates across 31 intensive modules covering vector databases, RAG, agentic tools, MCP, and K8s deployment.
-            </p>
-          </Card>
-
-          <Card variant="default" hover className="space-y-4 p-8 group">
-            <div className="h-10 w-10 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37] group-hover:border-[#D4AF37]/40 transition-colors">
-              <ShieldCheck className="h-5 w-5" />
-            </div>
-            <h3 className="text-base font-semibold text-[#FFFFFF] group-hover:text-[#D4AF37] transition-colors">
-              Objective Scoring Guardrails
-            </h3>
-            <p className="text-xs text-[#A3A3A3] leading-relaxed">
-              Generates holistic evaluation reports with strengths, weakness vector analysis, and customized growth trajectories.
-            </p>
-          </Card>
-        </div>
-
-        {/* Technical Stack */}
-        <Card variant="elevated" className="p-8 space-y-6">
-          <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
-            <Terminal className="h-5 w-5 text-[#D4AF37]" />
-            <h2 className="text-lg font-bold text-[#FFFFFF]">Frontend Foundation Specs</h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
-            <div className="space-y-2">
-              <h4 className="font-semibold text-[#FFFFFF] flex items-center gap-2">
-                <Cpu className="h-4 w-4 text-[#D4AF37]" /> Core Engine
-              </h4>
-              <p className="text-[#A3A3A3] leading-relaxed">
-                Built with React 19, TypeScript, and Vite. Implements clean feature-based architecture with full decoupled mock service state handlers.
-              </p>
+      <Section>
+        <LayoutContainer size="reading">
+          <Surface padding="lg" className="stack stack-md">
+            <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
+              <Terminal className="h-5 w-5 text-[#D4AF37]" />
+              <h2 className="text-lg font-bold text-white">Frontend Foundation Specs</h2>
             </div>
 
-            <div className="space-y-2">
-              <h4 className="font-semibold text-[#FFFFFF] flex items-center gap-2">
-                <Database className="h-4 w-4 text-[#D4AF37]" /> State & Data Flow
-              </h4>
-              <p className="text-[#A3A3A3] leading-relaxed">
-                Powered by Zustand for global UI and active interview telemetry, with TanStack Query managing async mock requests.
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
+            <LayoutGrid gap="md">
+              <div className="col-span-4 md:col-span-4 xl:col-span-6 stack stack-sm">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <Cpu className="h-4 w-4 text-[#D4AF37]" /> Core Engine
+                </h3>
+                <p className="text-[#A3A3A3] leading-relaxed text-sm">
+                  Built with React 19, TypeScript, and Vite with feature-oriented frontend modules and decoupled mock service state handlers.
+                </p>
+              </div>
+
+              <div className="col-span-4 md:col-span-4 xl:col-span-6 stack stack-sm">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <Database className="h-4 w-4 text-[#D4AF37]" /> State & Data Flow
+                </h3>
+                <p className="text-[#A3A3A3] leading-relaxed text-sm">
+                  Powered by Zustand for global interview state and TanStack Query for async mock request orchestration.
+                </p>
+              </div>
+            </LayoutGrid>
+          </Surface>
+        </LayoutContainer>
+      </Section>
     </PageTransition>
   );
 }

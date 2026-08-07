@@ -1,52 +1,30 @@
-/*
-========================================================
-
-File:
-layouts/RootLayout.tsx
-
-Purpose:
-Root layout container establishing the global 1440px desktop grid container.
-
-Responsibilities:
-- Enforces standardized max width (max-w-[1440px]) and padding across all routes
-- Renders sticky header navigation aligned with content container
-- Provides clean dark background surfaces and subtle glow ambient gradients
-
-Connected Files:
-- src/app/router.tsx
-- src/components/layout/Navbar.tsx
-
-Depends On:
-- react-router (Outlet)
-- sonner
-
-Notes:
-Standardized grid system container ensures consistent left/right alignment across all pages.
-
-========================================================
-*/
-
 import { Outlet } from "react-router";
 import { Toaster } from "sonner";
 import { Navbar } from "@/components/layout/Navbar";
+import { AppFooter } from "@/components/layout/AppFooter";
 
 export function RootLayout() {
   return (
     <div className="min-h-screen bg-[#070707] text-[#FFFFFF] relative selection:bg-[#D4AF37]/20 selection:text-[#FFFFFF] flex flex-col">
-      {/* Background Radial Glow */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only fixed top-4 left-4 z-[70] rounded-md bg-[#D4AF37] px-4 py-2 text-xs font-semibold text-[#0A0A0A]"
+      >
+        Skip to main content
+      </a>
+
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1200px] h-[500px] bg-radial from-[#D4AF37]/8 via-[#D4AF37]/2 to-transparent blur-3xl opacity-50" />
+        <div className="absolute -top-56 left-1/2 -translate-x-1/2 w-[1200px] h-[500px] bg-radial from-[#D4AF37]/8 via-[#D4AF37]/2 to-transparent blur-3xl opacity-50" />
       </div>
 
-      {/* Fixed Sticky Header Navigation */}
-      <Navbar />
+      <div className="relative z-10 flex min-h-screen flex-col">
+        <Navbar />
+        <main id="main-content" className="flex-1 pb-8" role="main">
+          <Outlet />
+        </main>
+        <AppFooter />
+      </div>
 
-      {/* Main Container */}
-      <main className="relative z-10 flex-1 pt-28 lg:pt-32 pb-16 w-full">
-        <Outlet />
-      </main>
-
-      {/* Global Toast Notifications */}
       <Toaster
         position="bottom-right"
         theme="dark"
