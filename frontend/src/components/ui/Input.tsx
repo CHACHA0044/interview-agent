@@ -5,26 +5,21 @@ File:
 components/ui/Input.tsx
 
 Purpose:
-Reusable text input component with consistent styling.
+Input and Textarea components tailored for Black & Gold theme.
 
 Responsibilities:
-- Renders styled input fields
-- Supports icons (left/right)
-- Handles focus, error, and disabled states
-- Includes textarea variant for multi-line input
+- Renders input controls with dark surface styling (#111111) and gold focus rings (#D4AF37)
+- Handles icon placement, error states, and disabled states
 
 Connected Files:
-- src/pages/InterviewPage.tsx (answer input)
-- src/pages/InterviewSetupPage.tsx (form inputs)
-- React Hook Form integration
+- CandidatesPage, InterviewSetupPage, InterviewPage
 
 Depends On:
 - react
-- cn utility
+- src/lib/cn.ts
 
 Notes:
-Use with React Hook Form's register() for form integration.
-Error messages should be displayed separately by the parent form.
+Focus border shifts to Gold (#D4AF37) with subtle glow ring.
 
 ========================================================
 */
@@ -41,30 +36,30 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, icon, rightIcon, error, ...props }, ref) => {
     return (
-      <div className="relative">
+      <div className="relative w-full">
         {icon && (
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#737373]">
             {icon}
           </span>
         )}
         <input
           ref={ref}
           className={cn(
-            "w-full rounded-xl bg-zinc-900/80 border border-zinc-800 px-4 py-2.5",
-            "text-sm text-zinc-100 placeholder:text-zinc-500",
+            "w-full rounded-xl bg-[#111111] border border-[#262626] px-4 py-3",
+            "text-sm text-[#FFFFFF] placeholder:text-[#737373]",
             "transition-all duration-200",
-            "focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50",
-            "hover:border-zinc-700",
-            "disabled:opacity-50 disabled:cursor-not-allowed",
+            "focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]",
+            "hover:border-[#383838]",
+            "disabled:opacity-40 disabled:cursor-not-allowed",
             icon && "pl-10",
             rightIcon && "pr-10",
-            error && "border-red-500/50 focus:ring-red-500/30",
+            error && "border-[#EF4444] focus:ring-[#EF4444]/30",
             className
           )}
           {...props}
         />
         {rightIcon && (
-          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500">
+          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#737373]">
             {rightIcon}
           </span>
         )}
@@ -89,14 +84,14 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       <textarea
         ref={ref}
         className={cn(
-          "w-full rounded-xl bg-zinc-900/80 border border-zinc-800 px-4 py-3",
-          "text-sm text-zinc-100 placeholder:text-zinc-500",
+          "w-full rounded-xl bg-[#111111] border border-[#262626] px-4 py-3",
+          "text-sm text-[#FFFFFF] placeholder:text-[#737373]",
           "transition-all duration-200 resize-none",
-          "focus:outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-500/50",
-          "hover:border-zinc-700",
-          "disabled:opacity-50 disabled:cursor-not-allowed",
+          "focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/30 focus:border-[#D4AF37]",
+          "hover:border-[#383838]",
+          "disabled:opacity-40 disabled:cursor-not-allowed",
           "min-h-[100px]",
-          error && "border-red-500/50 focus:ring-red-500/30",
+          error && "border-[#EF4444] focus:ring-[#EF4444]/30",
           className
         )}
         {...props}

@@ -5,11 +5,12 @@ File:
 pages/SettingsPage.tsx
 
 Purpose:
-Settings and environment parameters management page.
+System settings and environment configuration page.
 
 Responsibilities:
-- Controls theme, API mode (Mock vs Live Backend), and agent evaluation profiles
-- Provides toggle switches for interview audio/typing indicators
+- Toggle between mock services and live backend API endpoints
+- Configure HTTP target endpoint for interview agent
+- Save settings with toast confirmation
 
 Connected Files:
 - src/app/router.tsx (route: /settings)
@@ -17,17 +18,17 @@ Connected Files:
 Depends On:
 - react
 - lucide-react
-- src/components/ui/ (Card, Button, Input)
+- sonner
 
 Notes:
-Allows seamless transition between mock frontend testing and future live backend APIs.
+Adheres to Black & Gold design system. All controls use dark surfaces.
 
 ========================================================
 */
 
 import { useState } from "react";
 import { Settings, Server, Save } from "lucide-react";
-import { Card, Button, Input } from "@/components/ui";
+import { Card, Button, Input, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { toast } from "sonner";
 
@@ -41,37 +42,45 @@ export function SettingsPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-4xl mx-auto px-4 py-10 space-y-8">
-        <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-zinc-100 tracking-tight flex items-center gap-3">
-            <Settings className="h-7 w-7 text-brand-400" /> System Settings
+      <div className="max-w-4xl mx-auto px-6 sm:px-8 space-y-10">
+        <div className="border-b border-[#262626] pb-8 space-y-2">
+          <Badge variant="gold" className="px-3 py-1 font-mono text-[11px]">
+            <Settings className="h-3.5 w-3.5 mr-1 text-[#D4AF37]" />
+            Runtime Configuration
+          </Badge>
+          <h1 className="text-4xl font-extrabold text-[#FFFFFF] tracking-tight">
+            System Settings
           </h1>
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-[#A3A3A3]">
             Configure application runtime settings, backend integrations, and evaluation behaviors.
           </p>
         </div>
 
-        <Card variant="glass" className="p-6 space-y-6">
-          <h3 className="text-lg font-bold text-zinc-100 flex items-center gap-2 border-b border-zinc-800 pb-3">
-            <Server className="h-5 w-5 text-blue-400" /> Backend API Configuration
-          </h3>
+        <Card variant="default" className="p-8 space-y-6">
+          <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
+            <Server className="h-5 w-5 text-[#D4AF37]" />
+            <h3 className="text-base font-bold text-[#FFFFFF]">Backend API Configuration</h3>
+          </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-900/60 border border-zinc-800">
+          <div className="space-y-5">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-[#171717] border border-[#262626]">
               <div>
-                <span className="text-sm font-semibold text-zinc-200 block">Use Mock Services</span>
-                <span className="text-xs text-zinc-400">Simulate backend response latency and agent responses locally</span>
+                <span className="text-sm font-semibold text-[#FFFFFF] block">Use Mock Services</span>
+                <span className="text-xs text-[#737373]">Simulate backend response latency and agent responses locally</span>
               </div>
-              <input
-                type="checkbox"
-                checked={useMockService}
-                onChange={(e) => setUseMockService(e.target.checked)}
-                className="h-5 w-5 accent-brand-500 rounded cursor-pointer"
-              />
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={useMockService}
+                  onChange={(e) => setUseMockService(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5 bg-[#262626] rounded-full peer peer-checked:bg-[#D4AF37] peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-[#0A0A0A] after:rounded-full after:h-4 after:w-4 after:transition-all"></div>
+              </label>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300 block">HTTP Target Endpoint</label>
+              <label className="text-xs font-medium text-[#A3A3A3] block">HTTP Target Endpoint</label>
               <Input
                 value={apiEndpoint}
                 onChange={(e) => setApiEndpoint(e.target.value)}

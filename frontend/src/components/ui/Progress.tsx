@@ -5,25 +5,21 @@ File:
 components/ui/Progress.tsx
 
 Purpose:
-Progress bar component with animated fill and optional label.
+Progress bar component with Gold fill animation for Black & Gold theme.
 
 Responsibilities:
-- Displays progress as a horizontal bar
-- Supports color variants for different contexts
-- Smooth animation on value changes
-- Optionally shows percentage text
+- Displays progress fill with Gold (#D4AF37) accent
+- Renders percentage labels and custom metrics
 
 Connected Files:
-- Interview progress tracking
-- Candidate mission completion
-- Feedback score display
+- Interview session metrics, Candidate mission meters
 
 Depends On:
 - motion
-- cn utility
+- src/lib/cn.ts
 
 Notes:
-Value should be between 0 and 100.
+Progress bar uses Gold fill over dark track (#171717).
 
 ========================================================
 */
@@ -32,11 +28,11 @@ import { motion } from "motion/react";
 import { cn } from "@/lib/cn";
 
 const progressColors = {
-  default: "bg-brand-500",
-  success: "bg-emerald-500",
-  warning: "bg-amber-500",
-  danger: "bg-red-500",
-  info: "bg-blue-500",
+  default: "bg-[#D4AF37]",
+  gold: "bg-[#D4AF37]",
+  success: "bg-[#22C55E]",
+  warning: "bg-[#F59E0B]",
+  danger: "bg-[#EF4444]",
 } as const;
 
 interface ProgressProps {
@@ -51,7 +47,7 @@ interface ProgressProps {
 export function Progress({
   value,
   max = 100,
-  color = "default",
+  color = "gold",
   showLabel = false,
   size = "md",
   className,
@@ -59,22 +55,22 @@ export function Progress({
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
 
   const sizeClasses = {
-    sm: "h-1",
-    md: "h-2",
-    lg: "h-3",
+    sm: "h-1.5",
+    md: "h-2.5",
+    lg: "h-3.5",
   };
 
   return (
     <div className={cn("w-full", className)}>
       {showLabel && (
-        <div className="flex justify-between mb-1.5">
-          <span className="text-xs text-zinc-500">Progress</span>
-          <span className="text-xs text-zinc-400 font-medium">{Math.round(percentage)}%</span>
+        <div className="flex justify-between mb-2">
+          <span className="text-xs text-[#737373] font-medium">Completion Meter</span>
+          <span className="text-xs text-[#D4AF37] font-mono font-semibold">{Math.round(percentage)}%</span>
         </div>
       )}
       <div
         className={cn(
-          "w-full rounded-full bg-zinc-800/60 overflow-hidden",
+          "w-full rounded-full bg-[#171717] border border-[#262626] overflow-hidden",
           sizeClasses[size]
         )}
       >
@@ -82,7 +78,7 @@ export function Progress({
           className={cn("h-full rounded-full", progressColors[color])}
           initial={{ width: 0 }}
           animate={{ width: `${percentage}%` }}
-          transition={{ duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         />
       </div>
     </div>

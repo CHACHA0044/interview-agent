@@ -8,29 +8,28 @@ Purpose:
 Central constants file for the Interview Agent application.
 
 Responsibilities:
-- Defines application-wide constants
-- Houses route paths, API endpoints, and config values
-- Prevents magic strings and numbers throughout the codebase
+- Defines application-wide constants and route definitions
+- Houses status colors matching Black & Gold design system tokens
+- Provides animation variants for Motion components
 
 Connected Files:
-- src/app/router.tsx (route paths)
-- src/services/ (API endpoints)
-- All components (consume constants)
+- src/app/router.tsx
+- src/services/
+- All components
 
 Depends On:
 - Nothing (leaf module)
 
 Notes:
-Group constants by domain. Never use magic values inline.
-All constants should be UPPER_SNAKE_CASE.
+Gold accent (#D4AF37) is reserved for active states, key numbers, and buttons.
 
 ========================================================
 */
 
 /** Application metadata */
 export const APP_NAME = "Interview Agent" as const;
-export const APP_DESCRIPTION = "AI-Powered Technical Interview Platform" as const;
-export const APP_VERSION = "0.1.0" as const;
+export const APP_DESCRIPTION = "Enterprise AI Technical Interview Platform" as const;
+export const APP_VERSION = "0.2.0" as const;
 
 /** Route paths */
 export const ROUTES = {
@@ -53,13 +52,13 @@ export const INTERVIEW_CONFIG = {
   MESSAGE_DELAY_MS: 800,
 } as const;
 
-/** Status labels and colors */
+/** Status colors for Black & Gold theme */
 export const STATUS_COLORS = {
-  success: { label: "Success", className: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20" },
-  warning: { label: "Warning", className: "text-amber-400 bg-amber-400/10 border-amber-400/20" },
-  danger: { label: "Danger", className: "text-red-400 bg-red-400/10 border-red-400/20" },
-  info: { label: "Info", className: "text-blue-400 bg-blue-400/10 border-blue-400/20" },
-  neutral: { label: "Neutral", className: "text-zinc-400 bg-zinc-400/10 border-zinc-400/20" },
+  success: { label: "Completed", className: "text-[#22C55E] bg-[#22C55E]/10 border-[#22C55E]/20" },
+  warning: { label: "Pending", className: "text-[#F59E0B] bg-[#F59E0B]/10 border-[#F59E0B]/20" },
+  danger: { label: "Failed", className: "text-[#EF4444] bg-[#EF4444]/10 border-[#EF4444]/20" },
+  gold: { label: "Active", className: "text-[#D4AF37] bg-[#D4AF37]/10 border-[#D4AF37]/25" },
+  neutral: { label: "Inactive", className: "text-[#A3A3A3] bg-[#171717] border-[#262626]" },
 } as const;
 
 /** Animation variants for Motion */
@@ -68,47 +67,18 @@ export const MOTION_VARIANTS = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0 },
-    transition: { duration: 0.3 },
+    transition: { duration: 0.25 },
   },
   slideUp: {
-    initial: { opacity: 0, y: 20 },
+    initial: { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: 20 },
-    transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
-  },
-  slideDown: {
-    initial: { opacity: 0, y: -10 },
-    animate: { opacity: 1, y: 0 },
-    exit: { opacity: 0, y: -10 },
-    transition: { duration: 0.3 },
+    exit: { opacity: 0, y: 16 },
+    transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
   },
   scaleIn: {
-    initial: { opacity: 0, scale: 0.95 },
+    initial: { opacity: 0, scale: 0.96 },
     animate: { opacity: 1, scale: 1 },
-    exit: { opacity: 0, scale: 0.95 },
+    exit: { opacity: 0, scale: 0.96 },
     transition: { duration: 0.2 },
   },
-  staggerContainer: {
-    animate: {
-      transition: {
-        staggerChildren: 0.08,
-      },
-    },
-  },
-  staggerItem: {
-    initial: { opacity: 0, y: 12 },
-    animate: { opacity: 1, y: 0 },
-    transition: { duration: 0.3 },
-  },
 } as const;
-
-/** Curriculum module labels */
-export const MODULE_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  SETUP: { label: "Setup", color: "text-blue-400" },
-  BUILD: { label: "Build", color: "text-emerald-400" },
-  AI_CORE: { label: "AI Core", color: "text-purple-400" },
-  LEARN: { label: "Learn", color: "text-amber-400" },
-  SHIP_IT: { label: "Ship It", color: "text-rose-400" },
-  OPTIMIZE: { label: "Optimize", color: "text-cyan-400" },
-  CAPSTONE: { label: "Capstone", color: "text-pink-400" },
-};

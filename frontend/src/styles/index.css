@@ -5,25 +5,24 @@ File:
 index.css
 
 Purpose:
-Global stylesheet and Tailwind CSS v4 entry point.
+Global stylesheet for the luxury Black & Gold Linear/Vercel design system.
 
 Responsibilities:
-- Imports Tailwind CSS base, components, and utilities
-- Defines CSS custom properties for the design system
-- Sets up global styles, scrollbar customization, glassmorphism utilities
-- Provides animation utilities and reduced-motion support
+- Imports Tailwind CSS and defines font-face for supplied Indie Flower font
+- Defines custom CSS variables for Black & Gold color scheme
+- Configures glassmorphism, scrollbars, code blocks, and prose formatting
+- Implements 8px spacing system and elevation shadows
 
 Connected Files:
-- tailwind.config.ts (theme configuration)
-- All components (consume these styles via classes)
-- main.tsx (imports this file)
+- tailwind.config.ts
+- src/main.tsx
 
 Depends On:
 - tailwindcss v4
 
 Notes:
-This is the single CSS entry point. All custom CSS goes here.
-Component-specific styles should use Tailwind utilities inline.
+Primary BG: #0A0A0A, Secondary Surface: #111111, Elevated Surface: #171717, Borders: #262626
+Gold Accent (#D4AF37) is used exclusively for accents, active states, and highlights.
 
 ========================================================
 */
@@ -32,53 +31,45 @@ Component-specific styles should use Tailwind utilities inline.
 @config "../../tailwind.config.ts";
 
 /* ========================================
-   Design System: Custom Properties
+   Font Face Setup
    ======================================== */
 
-:root {
-  /* Typography */
-  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
-
-  /* Spacing scale */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
-  --space-20: 5rem;
-
-  /* Elevation */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6);
-  --shadow-glow-purple: 0 0 20px rgba(168, 85, 247, 0.15);
-  --shadow-glow-blue: 0 0 20px rgba(59, 130, 246, 0.15);
-
-  /* Radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
-  --radius-full: 9999px;
-
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-spring: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+@font-face {
+  font-family: 'Indie Flower';
+  src: url('/Indie_Flower/IndieFlower-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
 
 /* ========================================
-   Base Styles
+   CSS Custom Variables
+   ======================================== */
+
+:root {
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #111111;
+  --bg-elevated: #171717;
+  --border-color: #262626;
+  --border-hover: #383838;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-muted: #737373;
+
+  --gold-accent: #D4AF37;
+  --gold-light: #E6C76B;
+  --gold-hover: #F0D878;
+  --gold-subtle: rgba(212, 175, 55, 0.1);
+  --gold-border: rgba(212, 175, 55, 0.25);
+
+  --status-success: #22C55E;
+  --status-error: #EF4444;
+  --status-warning: #F59E0B;
+}
+
+/* ========================================
+   Base Reset
    ======================================== */
 
 * {
@@ -91,12 +82,14 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #0A0A0A;
+  color: #FFFFFF;
 }
 
 body {
-  font-family: var(--font-sans);
-  background-color: #09090b;
-  color: #fafafa;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+  background-color: #0A0A0A;
+  color: #FFFFFF;
   min-height: 100vh;
   overflow-x: hidden;
 }
@@ -108,7 +101,7 @@ body {
 }
 
 /* ========================================
-   Scrollbar Customization
+   Custom Scrollbar
    ======================================== */
 
 ::-webkit-scrollbar {
@@ -117,189 +110,109 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #0A0A0A;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(113, 113, 122, 0.3);
+  background: #262626;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(113, 113, 122, 0.5);
-}
-
-/* Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(113, 113, 122, 0.3) transparent;
+  background: #D4AF37;
 }
 
 /* ========================================
-   Glass Effects
+   Glass & Elevation Utilities
    ======================================== */
 
-.glass {
-  background: rgba(24, 24, 27, 0.6);
+.glass-panel {
+  background: rgba(17, 17, 17, 0.85);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(63, 63, 70, 0.3);
+  border: 1px solid #262626;
 }
 
-.glass-subtle {
-  background: rgba(24, 24, 27, 0.4);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(63, 63, 70, 0.2);
+.glass-elevated {
+  background: rgba(23, 23, 23, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid #262626;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
-.glass-heavy {
-  background: rgba(9, 9, 11, 0.8);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(63, 63, 70, 0.4);
+.gold-glow {
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.15);
 }
 
-/* ========================================
-   Gradient Borders
-   ======================================== */
-
-.gradient-border {
-  position: relative;
-  background: #18181b;
-  border-radius: var(--radius-xl);
-}
-
-.gradient-border::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    rgba(168, 85, 247, 0.3),
-    rgba(59, 130, 246, 0.3),
-    rgba(168, 85, 247, 0.1)
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-
-.gradient-border-animated::before {
-  background: linear-gradient(
-    var(--angle, 135deg),
-    rgba(168, 85, 247, 0.4),
-    rgba(59, 130, 246, 0.4),
-    rgba(168, 85, 247, 0.2),
-    rgba(59, 130, 246, 0.2)
-  );
-  background-size: 300% 300%;
-  animation: borderGlow 3s linear infinite;
+.gold-border-glow {
+  border-color: rgba(212, 175, 55, 0.4);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.1);
 }
 
 /* ========================================
-   Shimmer / Skeleton Loading
-   ======================================== */
-
-.shimmer {
-  background: linear-gradient(
-    90deg,
-    rgba(39, 39, 42, 0.4) 25%,
-    rgba(63, 63, 70, 0.4) 50%,
-    rgba(39, 39, 42, 0.4) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite linear;
-}
-
-/* ========================================
-   Typing Indicator
+   Typing Dot Animation
    ======================================== */
 
 .typing-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: rgba(168, 85, 247, 0.6);
+  background: #D4AF37;
   animation: typingBounce 1.4s infinite ease-in-out;
 }
 
-.typing-dot:nth-child(1) {
-  animation-delay: 0s;
-}
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
 @keyframes typingBounce {
-  0%,
-  60%,
-  100% {
+  0%, 60%, 100% {
     transform: translateY(0);
     opacity: 0.4;
   }
   30% {
-    transform: translateY(-8px);
+    transform: translateY(-6px);
     opacity: 1;
   }
 }
 
 /* ========================================
-   Focus Styles
+   Shimmer Loader
    ======================================== */
 
-:focus-visible {
-  outline: 2px solid rgba(168, 85, 247, 0.5);
-  outline-offset: 2px;
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(23, 23, 23, 0.6) 25%,
+    rgba(38, 38, 38, 0.6) 50%,
+    rgba(23, 23, 23, 0.6) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 /* ========================================
-   Selection
-   ======================================== */
-
-::selection {
-  background: rgba(168, 85, 247, 0.3);
-  color: #fafafa;
-}
-
-/* ========================================
-   Reduced Motion
-   ======================================== */
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-}
-
-/* ========================================
-   Prose / Markdown Styles
+   Prose / Markdown Formatting
    ======================================== */
 
 .prose-interview {
   line-height: 1.7;
-  color: #d4d4d8;
+  color: #A3A3A3;
+  font-size: 0.9375rem;
 }
 
 .prose-interview h1,
 .prose-interview h2,
 .prose-interview h3 {
-  color: #fafafa;
+  color: #FFFFFF;
   font-weight: 600;
-  margin-top: 1.5em;
+  margin-top: 1.25em;
   margin-bottom: 0.5em;
 }
 
@@ -308,18 +221,19 @@ body {
 }
 
 .prose-interview code {
-  font-family: var(--font-mono);
-  background: rgba(39, 39, 42, 0.6);
+  font-family: "JetBrains Mono", monospace;
+  background: #171717;
+  border: 1px solid #262626;
   padding: 0.15em 0.4em;
   border-radius: 4px;
-  font-size: 0.875em;
-  color: #c084fc;
+  font-size: 0.85em;
+  color: #E6C76B;
 }
 
 .prose-interview pre {
-  background: rgba(9, 9, 11, 0.8);
-  border: 1px solid rgba(63, 63, 70, 0.3);
-  border-radius: var(--radius-lg);
+  background: #0A0A0A;
+  border: 1px solid #262626;
+  border-radius: 0.75rem;
   padding: 1rem;
   overflow-x: auto;
   margin: 1em 0;
@@ -327,8 +241,9 @@ body {
 
 .prose-interview pre code {
   background: none;
+  border: none;
   padding: 0;
-  color: #d4d4d8;
+  color: #FFFFFF;
 }
 
 .prose-interview ul,
@@ -342,18 +257,9 @@ body {
 }
 
 .prose-interview blockquote {
-  border-left: 3px solid rgba(168, 85, 247, 0.4);
+  border-left: 3px solid #D4AF37;
   padding-left: 1em;
-  color: #a1a1aa;
+  color: #737373;
   margin: 1em 0;
-}
-
-.prose-interview a {
-  color: #a855f7;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.prose-interview a:hover {
-  color: #c084fc;
+  font-style: italic;
 }

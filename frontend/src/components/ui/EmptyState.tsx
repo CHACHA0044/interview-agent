@@ -8,22 +8,18 @@ Purpose:
 Empty state placeholder for when no data is available.
 
 Responsibilities:
-- Displays a friendly message when content is empty
-- Includes an icon, title, description, and optional action
-- Used across all pages with potentially empty lists
+- Displays friendly message when content is empty
+- Includes icon, title, description, and optional action
 
 Connected Files:
-- src/pages/CandidatesPage.tsx
-- src/pages/InterviewPage.tsx
-- Any page that can have zero items
+- CandidatesPage, InterviewPage
 
 Depends On:
-- lucide-react
-- cn utility
 - motion
+- src/lib/cn.ts
 
 Notes:
-Always provide a helpful message and action when possible.
+Uses muted text colors from Black & Gold palette.
 
 ========================================================
 */
@@ -46,13 +42,13 @@ export function EmptyState({ icon, title, description, action, className }: Empt
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
       className={cn(
-        "flex flex-col items-center justify-center py-16 px-6 text-center",
+        "flex flex-col items-center justify-center py-20 px-6 text-center",
         className
       )}
     >
-      <div className="mb-4 text-zinc-600">{icon}</div>
-      <h3 className="text-lg font-semibold text-zinc-300 mb-2">{title}</h3>
-      <p className="text-sm text-zinc-500 max-w-sm mb-6">{description}</p>
+      <div className="mb-5 text-[#737373]">{icon}</div>
+      <h3 className="text-base font-semibold text-[#FFFFFF] mb-2">{title}</h3>
+      <p className="text-sm text-[#A3A3A3] max-w-sm mb-6">{description}</p>
       {action}
     </motion.div>
   );

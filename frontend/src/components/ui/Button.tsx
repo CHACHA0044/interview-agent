@@ -5,27 +5,25 @@ File:
 components/ui/Button.tsx
 
 Purpose:
-Reusable button component with multiple variants and sizes.
+Luxury button component with Gold accents for the Black & Gold design system.
 
 Responsibilities:
-- Renders styled buttons with consistent design tokens
-- Supports variants: primary, secondary, ghost, danger, outline
+- Renders styled buttons with gold primary styling and dark elevated options
+- Supports variants: primary (gold gradient), secondary (dark elevated), ghost, outline, danger
 - Supports sizes: sm, md, lg
-- Includes loading state with spinner
-- Handles disabled states with visual feedback
+- Includes loading spinner and icon support
 
 Connected Files:
-- All pages and features that need buttons
-- src/lib/cn.ts (class merging)
+- All pages and feature components
+- src/lib/cn.ts
 
 Depends On:
 - react
-- clsx / tailwind-merge via cn()
-- motion (for hover/tap animations)
+- motion
+- lucide-react (Loader2)
 
 Notes:
-Use the variant prop to match the action's intent.
-Loading state disables the button and shows a spinner.
+Primary buttons use solid Gold (#D4AF37) with dark text for high contrast.
 
 ========================================================
 */
@@ -37,21 +35,21 @@ import { cn } from "@/lib/cn";
 
 const variants = {
   primary:
-    "bg-brand-600 text-white hover:bg-brand-500 shadow-md shadow-brand-600/20 border border-brand-500/20",
+    "bg-[#D4AF37] text-[#0A0A0A] font-semibold hover:bg-[#F0D878] shadow-md shadow-[#D4AF37]/10 border border-[#E6C76B]",
   secondary:
-    "bg-zinc-800 text-zinc-100 hover:bg-zinc-700 border border-zinc-700/50",
+    "bg-[#171717] text-[#FFFFFF] hover:bg-[#262626] border border-[#262626] hover:border-[#383838]",
   ghost:
-    "bg-transparent text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60",
+    "bg-transparent text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#171717]",
   danger:
-    "bg-red-600/10 text-red-400 hover:bg-red-600/20 border border-red-500/20",
+    "bg-[#EF4444]/10 text-[#EF4444] hover:bg-[#EF4444]/20 border border-[#EF4444]/20",
   outline:
-    "bg-transparent text-zinc-300 hover:bg-zinc-800/60 border border-zinc-700",
+    "bg-transparent text-[#FFFFFF] hover:border-[#D4AF37] border border-[#262626] hover:text-[#D4AF37]",
 } as const;
 
 const sizes = {
-  sm: "h-8 px-3 text-xs gap-1.5 rounded-lg",
-  md: "h-10 px-4 text-sm gap-2 rounded-xl",
-  lg: "h-12 px-6 text-base gap-2.5 rounded-xl",
+  sm: "h-9 px-3.5 text-xs gap-1.5 rounded-lg",
+  md: "h-11 px-5 text-sm gap-2 rounded-xl",
+  lg: "h-13 px-7 text-base gap-2.5 rounded-xl",
 } as const;
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -81,14 +79,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         onClick={onClick}
-        whileHover={!disabled && !isLoading ? { scale: 1.02 } : undefined}
-        whileTap={!disabled && !isLoading ? { scale: 0.98 } : undefined}
+        whileHover={!disabled && !isLoading ? { scale: 1.015 } : undefined}
+        whileTap={!disabled && !isLoading ? { scale: 0.985 } : undefined}
         transition={{ duration: 0.15 }}
         className={cn(
-          "inline-flex items-center justify-center font-medium transition-all duration-200",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950",
-          "disabled:opacity-50 disabled:pointer-events-none",
-          "cursor-pointer",
+          "inline-flex items-center justify-center font-medium transition-all duration-200 shrink-0",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0A0A0A]",
+          "disabled:opacity-40 disabled:pointer-events-none cursor-pointer",
           variants[variant],
           sizes[size],
           className

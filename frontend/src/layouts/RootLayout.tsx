@@ -5,26 +5,22 @@ File:
 layouts/RootLayout.tsx
 
 Purpose:
-Root layout wrapping all application pages.
+Root layout container for the Black & Gold application theme.
 
 Responsibilities:
-- Renders the Navbar at the top
-- Provides a main content area with proper padding
-- Houses the Sonner toast container
-- Adds a subtle background gradient
+- Renders sticky Navbar with proper top padding (pt-24 / pt-28) to eliminate text clipping/overlap
+- Houses Sonner toast container with Gold accent borders
 
 Connected Files:
-- src/app/router.tsx (used as layout route)
+- src/app/router.tsx
 - src/components/layout/Navbar.tsx
-- All pages render inside this layout
 
 Depends On:
 - react-router (Outlet)
-- sonner (Toaster)
-- Navbar component
+- sonner
 
 Notes:
-The pt-16 padding accounts for the fixed navbar height.
+pt-24 (96px top padding) guarantees page titles never get clipped under the navbar.
 
 ========================================================
 */
@@ -35,16 +31,10 @@ import { Navbar } from "@/components/layout/Navbar";
 
 export function RootLayout() {
   return (
-    <div className="min-h-screen bg-zinc-950 relative">
-      {/* Subtle background gradient */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-brand-500/3 rounded-full blur-[128px]" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent-500/3 rounded-full blur-[128px]" />
-      </div>
-
+    <div className="min-h-screen bg-[#0A0A0A] text-[#FFFFFF] relative selection:bg-[#D4AF37]/20 selection:text-[#FFFFFF]">
       <Navbar />
 
-      <main className="relative pt-16 min-h-screen">
+      <main className="relative pt-28 pb-16 min-h-screen">
         <Outlet />
       </main>
 
@@ -53,10 +43,10 @@ export function RootLayout() {
         theme="dark"
         toastOptions={{
           style: {
-            background: "rgba(24, 24, 27, 0.9)",
-            border: "1px solid rgba(63, 63, 70, 0.3)",
-            backdropFilter: "blur(16px)",
-            color: "#fafafa",
+            background: "#111111",
+            border: "1px solid #262626",
+            color: "#FFFFFF",
+            borderRadius: "0.75rem",
           },
         }}
       />

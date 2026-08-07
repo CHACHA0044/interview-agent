@@ -5,23 +5,21 @@ File:
 components/ui/Skeleton.tsx
 
 Purpose:
-Shimmer loading placeholder component.
+Skeleton loading placeholders for Black & Gold theme.
 
 Responsibilities:
-- Displays animated loading placeholders
-- Matches the shape of content that will be loaded
-- Provides consistent loading UX across the app
+- Displays subtle shimmer loading states in #171717 surfaces
+- Preserves layout dimensions while data fetches asynchronously
 
 Connected Files:
-- All pages with loading states
-- src/styles/index.css (shimmer animation)
+- CandidatesPage, InterviewPage
 
 Depends On:
-- cn utility
+- react
+- src/lib/cn.ts
 
 Notes:
-Use Skeleton as a placeholder while data loads.
-Match the width/height to the expected content dimensions.
+Shimmer animation defined in index.css.
 
 ========================================================
 */
@@ -36,7 +34,7 @@ export function Skeleton({ className }: SkeletonProps) {
   return (
     <div
       className={cn(
-        "shimmer rounded-lg",
+        "shimmer rounded-xl bg-[#171717]",
         className
       )}
       aria-hidden="true"
@@ -46,7 +44,7 @@ export function Skeleton({ className }: SkeletonProps) {
 
 export function SkeletonCard() {
   return (
-    <div className="rounded-2xl bg-zinc-900/80 border border-zinc-800/60 p-5 space-y-4">
+    <div className="rounded-2xl bg-[#111111] border border-[#262626] p-6 space-y-4">
       <div className="flex items-center gap-3">
         <Skeleton className="h-10 w-10 rounded-full" />
         <div className="space-y-2 flex-1">
@@ -56,9 +54,8 @@ export function SkeletonCard() {
       </div>
       <Skeleton className="h-3 w-full" />
       <Skeleton className="h-3 w-3/4" />
-      <div className="flex gap-2">
-        <Skeleton className="h-6 w-16 rounded-full" />
-        <Skeleton className="h-6 w-20 rounded-full" />
+      <div className="flex gap-2 pt-2">
+        <Skeleton className="h-8 w-24 rounded-lg" />
       </div>
     </div>
   );
@@ -66,12 +63,11 @@ export function SkeletonCard() {
 
 export function SkeletonMessage() {
   return (
-    <div className="flex gap-3 p-4">
-      <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+    <div className="flex items-start gap-3 p-4 rounded-2xl bg-[#171717] border border-[#262626] max-w-lg">
+      <Skeleton className="h-8 w-8 rounded-xl shrink-0" />
       <div className="space-y-2 flex-1">
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
+        <Skeleton className="h-3 w-3/4" />
+        <Skeleton className="h-3 w-1/2" />
       </div>
     </div>
   );

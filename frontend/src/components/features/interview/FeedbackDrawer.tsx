@@ -5,23 +5,22 @@ File:
 components/features/interview/FeedbackDrawer.tsx
 
 Purpose:
-Slide-out drawer displaying interim or live interview metrics.
+Slide-out drawer displaying interim interview telemetry.
 
 Responsibilities:
-- Displays instant performance metrics, covered topics, and score estimates
-- Provides slide-in animation using Motion
+- Displays live performance metrics in a slide panel
+- Gold-accented score display and progress bars
 
 Connected Files:
 - src/pages/InterviewPage.tsx
 
 Depends On:
-- react
 - motion
 - lucide-react
-- src/components/ui/ (Card, Progress, Button)
+- src/components/ui/
 
 Notes:
-Can be toggled by the candidate/interviewer during the active interview.
+Uses Black & Gold palette for all surfaces and accent elements.
 
 ========================================================
 */
@@ -53,7 +52,7 @@ export function FeedbackDrawer({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50"
           />
 
           <motion.div
@@ -61,16 +60,16 @@ export function FeedbackDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-zinc-950 border-l border-zinc-800 z-50 p-6 overflow-y-auto space-y-6 flex flex-col justify-between"
+            className="fixed right-0 top-0 bottom-0 w-full max-w-md bg-[#0A0A0A] border-l border-[#262626] z-50 p-6 overflow-y-auto space-y-6 flex flex-col justify-between"
           >
             <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
-                <h2 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
-                  <Award className="h-5 w-5 text-brand-400" /> Session Telemetry
+              <div className="flex items-center justify-between border-b border-[#262626] pb-4">
+                <h2 className="text-base font-bold text-[#FFFFFF] flex items-center gap-2">
+                  <Award className="h-5 w-5 text-[#D4AF37]" /> Session Telemetry
                 </h2>
                 <button
                   onClick={onClose}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 transition-colors"
+                  className="p-1.5 rounded-lg text-[#737373] hover:text-[#FFFFFF] hover:bg-[#171717] transition-colors cursor-pointer"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -78,23 +77,23 @@ export function FeedbackDrawer({
 
               {feedback ? (
                 <div className="space-y-6">
-                  <Card variant="glass" className="text-center p-6 space-y-2">
-                    <span className="text-xs text-zinc-400 font-medium uppercase tracking-wider">
-                      Overall Evaluation Score
+                  <Card variant="default" className="text-center p-6 space-y-3">
+                    <span className="text-[10px] text-[#737373] font-mono uppercase tracking-widest">
+                      Overall Score
                     </span>
-                    <div className="text-4xl font-extrabold text-brand-400">
+                    <div className="text-5xl font-extrabold text-[#D4AF37]">
                       {feedback.overallScore}%
                     </div>
-                    <Progress value={feedback.overallScore} showLabel />
+                    <Progress value={feedback.overallScore} showLabel color="gold" />
                   </Card>
 
                   <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Key Strengths
+                    <h3 className="text-xs font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-[#22C55E]" /> Key Strengths
                     </h3>
                     <div className="space-y-1.5">
                       {feedback.strengths.slice(0, 3).map((s, i) => (
-                        <div key={i} className="text-xs text-zinc-300 bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800">
+                        <div key={i} className="text-xs text-[#FFFFFF] bg-[#171717] p-3 rounded-xl border border-[#262626]">
                           {s}
                         </div>
                       ))}
@@ -102,12 +101,12 @@ export function FeedbackDrawer({
                   </div>
 
                   <div className="space-y-2">
-                    <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <AlertCircle className="h-3.5 w-3.5 text-amber-400" /> Growth Opportunities
+                    <h3 className="text-xs font-bold text-[#FFFFFF] uppercase tracking-wider flex items-center gap-1.5">
+                      <AlertCircle className="h-3.5 w-3.5 text-[#F59E0B]" /> Growth Areas
                     </h3>
                     <div className="space-y-1.5">
                       {feedback.gaps.slice(0, 2).map((g, i) => (
-                        <div key={i} className="text-xs text-zinc-300 bg-zinc-900/60 p-2.5 rounded-lg border border-zinc-800">
+                        <div key={i} className="text-xs text-[#FFFFFF] bg-[#171717] p-3 rounded-xl border border-[#262626]">
                           {g}
                         </div>
                       ))}
@@ -115,7 +114,7 @@ export function FeedbackDrawer({
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-zinc-400 text-center py-8">
+                <p className="text-sm text-[#737373] text-center py-8">
                   Feedback report is generated automatically upon interview completion.
                 </p>
               )}
@@ -127,7 +126,7 @@ export function FeedbackDrawer({
                 className="w-full justify-center"
                 icon={<ArrowRight className="h-4 w-4" />}
               >
-                View Full Detailed Report
+                View Full Report
               </Button>
             )}
           </motion.div>

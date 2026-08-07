@@ -5,12 +5,14 @@ File:
 pages/FeedbackPage.tsx
 
 Purpose:
-Displays the post-interview evaluation report and performance breakdown.
+Executive-grade post-interview performance report.
 
 Responsibilities:
-- Renders overall score, strengths, growth areas, and recommended next steps
-- Breaks down scores topic-by-topic
-- Allows exporting or launching new interview session
+- Renders overall mastery score with Gold accent
+- Displays strength/weakness breakdown with clear hierarchy
+- Shows topic-by-topic score meters
+- Provides actionable next-step recommendations
+- Includes CTA to start new session or download report
 
 Connected Files:
 - src/app/router.tsx (route: /interview/:sessionId/feedback)
@@ -21,10 +23,10 @@ Depends On:
 - react
 - react-router (useNavigate)
 - lucide-react
-- src/components/ui/ (Card, Badge, Progress, Button)
+- src/components/ui/
 
 Notes:
-Displays final evaluation metrics synthesized by the AI agent.
+This is an executive-summary view designed to feel printable and polished.
 
 ========================================================
 */
@@ -37,6 +39,9 @@ import {
   AlertCircle,
   RotateCcw,
   Sparkles,
+  FileText,
+  ArrowRight,
+  Target,
 } from "lucide-react";
 import { Card, Badge, Progress, Button } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
@@ -57,15 +62,19 @@ export function FeedbackPage() {
 
   return (
     <PageTransition>
-      <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
-          <div>
-            <Badge variant="purple" className="mb-2">
-              <Sparkles className="h-3 w-3 mr-1" /> Evaluation Complete
+      <div className="max-w-6xl mx-auto px-6 sm:px-8 space-y-10">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#262626] pb-8">
+          <div className="space-y-2">
+            <Badge variant="gold" className="px-3 py-1 font-mono text-[11px]">
+              <Sparkles className="h-3.5 w-3.5 mr-1 text-[#D4AF37]" />
+              Assessment Concluded
             </Badge>
-            <h1 className="text-3xl font-bold text-zinc-100 tracking-tight">Interview Performance Report</h1>
-            <p className="text-sm text-zinc-400 mt-1">
-              Synthesized evaluation for candidate assessment.
+            <h1 className="text-4xl font-extrabold text-[#FFFFFF] tracking-tight">
+              Performance Evaluation Report
+            </h1>
+            <p className="text-sm text-[#A3A3A3] max-w-xl">
+              Synthesized assessment results with topic-by-topic mastery breakdown and actionable growth recommendations.
             </p>
           </div>
 
@@ -73,78 +82,133 @@ export function FeedbackPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate("/interview/setup")}
+              onClick={() => navigate("/candidates")}
               icon={<RotateCcw className="h-3.5 w-3.5" />}
             >
-              New Interview
+              New Assessment
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<FileText className="h-3.5 w-3.5" />}
+            >
+              Export PDF
             </Button>
           </div>
         </div>
 
-        <Card variant="glass" className="p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2 text-center md:text-left">
-            <h2 className="text-xl font-bold text-zinc-100">Overall Mastery Rating</h2>
-            <p className="text-sm text-zinc-400 max-w-xl leading-relaxed">
+        {/* Hero Score Banner */}
+        <Card variant="elevated" className="p-10 flex flex-col md:flex-row items-center justify-between gap-8">
+          <div className="space-y-3 text-center md:text-left max-w-xl">
+            <h2 className="text-2xl font-bold text-[#FFFFFF]">Overall Mastery Rating</h2>
+            <p className="text-sm text-[#A3A3A3] leading-relaxed">
               {feedback.summary}
             </p>
           </div>
 
-          <div className="flex flex-col items-center justify-center p-6 rounded-2xl bg-zinc-900/80 border border-zinc-800 shrink-0 min-w-[160px]">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-1">
-              Score
+          <div className="flex flex-col items-center p-8 rounded-2xl bg-[#111111] border border-[#262626] shrink-0 min-w-[180px]">
+            <span className="text-[10px] font-mono text-[#737373] uppercase tracking-widest mb-2">
+              Composite Score
             </span>
-            <span className="text-5xl font-extrabold text-brand-400">{feedback.overallScore}%</span>
+            <span className="text-6xl font-extrabold text-[#D4AF37] leading-none">
+              {feedback.overallScore}
+            </span>
+            <span className="text-xs font-mono text-[#737373] mt-1">/ 100</span>
+            <div className="w-full mt-4">
+              <Progress value={feedback.overallScore} size="md" color="gold" />
+            </div>
           </div>
         </Card>
 
+        {/* Strengths & Growth Areas */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card variant="glass" className="space-y-4 p-6">
-            <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" /> Technical Strengths
+          {/* Strengths */}
+          <Card variant="default" className="p-8 space-y-5">
+            <h3 className="text-base font-bold text-[#FFFFFF] flex items-center gap-2.5 border-b border-[#262626] pb-4">
+              <CheckCircle2 className="h-5 w-5 text-[#22C55E]" /> Demonstrated Strengths
             </h3>
-            <ul className="space-y-2 text-sm text-zinc-300">
+            <ul className="space-y-3">
               {feedback.strengths.map((s, i) => (
-                <li key={i} className="flex items-start gap-2 bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/60">
-                  <span className="text-emerald-400 font-bold">•</span>
-                  <span>{s}</span>
+                <li
+                  key={i}
+                  className="flex items-start gap-3 bg-[#171717] p-4 rounded-xl border border-[#262626] text-sm text-[#FFFFFF]"
+                >
+                  <span className="h-5 w-5 rounded-md bg-[#22C55E]/10 text-[#22C55E] flex items-center justify-center shrink-0 text-[10px] font-bold">
+                    {i + 1}
+                  </span>
+                  <span className="leading-relaxed">{s}</span>
                 </li>
               ))}
             </ul>
           </Card>
 
-          <Card variant="glass" className="space-y-4 p-6">
-            <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-400" /> Growth Areas
+          {/* Growth Areas */}
+          <Card variant="default" className="p-8 space-y-5">
+            <h3 className="text-base font-bold text-[#FFFFFF] flex items-center gap-2.5 border-b border-[#262626] pb-4">
+              <AlertCircle className="h-5 w-5 text-[#F59E0B]" /> Growth Opportunities
             </h3>
-            <ul className="space-y-2 text-sm text-zinc-300">
+            <ul className="space-y-3">
               {feedback.gaps.map((g, i) => (
-                <li key={i} className="flex items-start gap-2 bg-zinc-900/40 p-3 rounded-xl border border-zinc-800/60">
-                  <span className="text-amber-400 font-bold">•</span>
-                  <span>{g}</span>
+                <li
+                  key={i}
+                  className="flex items-start gap-3 bg-[#171717] p-4 rounded-xl border border-[#262626] text-sm text-[#FFFFFF]"
+                >
+                  <span className="h-5 w-5 rounded-md bg-[#F59E0B]/10 text-[#F59E0B] flex items-center justify-center shrink-0 text-[10px] font-bold">
+                    {i + 1}
+                  </span>
+                  <span className="leading-relaxed">{g}</span>
                 </li>
               ))}
             </ul>
           </Card>
         </div>
 
-        <Card variant="glass" className="p-6 space-y-6">
-          <h3 className="text-lg font-bold text-zinc-100 flex items-center gap-2">
-            <Award className="h-5 w-5 text-brand-400" /> Topic Breakdown
-          </h3>
+        {/* Topic-by-Topic Breakdown */}
+        <Card variant="default" className="p-8 space-y-6">
+          <div className="flex items-center justify-between border-b border-[#262626] pb-4">
+            <h3 className="text-lg font-bold text-[#FFFFFF] flex items-center gap-2.5">
+              <Award className="h-5 w-5 text-[#D4AF37]" /> Topic Mastery Breakdown
+            </h3>
+            <span className="text-xs font-mono text-[#737373]">
+              {feedback.topicScores.length} Topics Assessed
+            </span>
+          </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             {feedback.topicScores.map((ts) => (
-              <div key={ts.topic} className="space-y-1.5 p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/60">
-                <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-zinc-200">{ts.topic}</span>
-                  <span className="font-mono text-brand-400">{ts.score} / {ts.maxScore}</span>
+              <div key={ts.topic} className="space-y-2 p-4 rounded-xl bg-[#171717] border border-[#262626]">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-[#FFFFFF]">{ts.topic}</span>
+                  <span className="text-sm font-mono font-bold text-[#D4AF37]">
+                    {ts.score} / {ts.maxScore}
+                  </span>
                 </div>
-                <Progress value={(ts.score / ts.maxScore) * 100} size="sm" />
-                <p className="text-xs text-zinc-400 mt-1">{ts.notes}</p>
+                <Progress value={(ts.score / ts.maxScore) * 100} size="sm" color="gold" />
+                <p className="text-xs text-[#A3A3A3] mt-1 leading-relaxed">{ts.notes}</p>
               </div>
             ))}
           </div>
         </Card>
+
+        {/* Recommended Next Steps */}
+        {feedback.next && feedback.next.length > 0 && (
+          <Card variant="default" className="p-8 space-y-5">
+            <h3 className="text-base font-bold text-[#FFFFFF] flex items-center gap-2.5 border-b border-[#262626] pb-4">
+              <Target className="h-5 w-5 text-[#D4AF37]" /> Recommended Next Steps
+            </h3>
+            <ul className="space-y-3">
+              {feedback.next.map((n, i) => (
+                <li
+                  key={i}
+                  className="flex items-center gap-3 bg-[#171717] p-4 rounded-xl border border-[#262626] text-sm text-[#FFFFFF]"
+                >
+                  <ArrowRight className="h-4 w-4 text-[#D4AF37] shrink-0" />
+                  <span>{n}</span>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </div>
     </PageTransition>
   );

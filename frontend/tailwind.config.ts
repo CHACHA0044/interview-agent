@@ -5,25 +5,22 @@ File:
 tailwind.config.ts
 
 Purpose:
-Tailwind CSS v4 configuration for the Interview Agent design system.
+Tailwind CSS configuration for the luxury Black & Gold Linear/Vercel design system.
 
 Responsibilities:
-- Defines custom color palette (zinc, purple, blue accents)
-- Configures typography (Inter, JetBrains Mono)
-- Sets up custom spacing, radius, and animation tokens
-- Extends default theme with glassmorphism utilities
+- Configures black, gold, and surface color scales
+- Sets up typography, spacing scale, and border radius tokens
+- Defines subtle, refined animations for interactive elements
 
 Connected Files:
-- src/styles/index.css (imports Tailwind directives)
-- All component files (consume Tailwind classes)
-- postcss.config.js
+- src/styles/index.css
+- All component files
 
 Depends On:
 - tailwindcss
 
 Notes:
-TailwindCSS v4 uses CSS-first configuration.
-This file is kept for compatibility but primary config is in CSS.
+Gold accent (#D4AF37) is reserved strictly for highlights, badges, active states, and buttons.
 
 ========================================================
 */
@@ -36,85 +33,82 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Inter"', "system-ui", "-apple-system", "sans-serif"],
-        mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
+        sans: [
+          '"Inter"',
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"SF Pro Display"',
+          '"Segoe UI"',
+          "Roboto",
+          "sans-serif",
+        ],
+        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        accent: ['"Indie Flower"', "cursive", "sans-serif"],
       },
       colors: {
-        brand: {
-          50: "#faf5ff",
-          100: "#f3e8ff",
-          200: "#e9d5ff",
-          300: "#d8b4fe",
-          400: "#c084fc",
-          500: "#a855f7",
-          600: "#9333ea",
-          700: "#7c3aed",
-          800: "#6d28d9",
-          900: "#581c87",
-          950: "#3b0764",
+        bg: {
+          primary: "#0A0A0A",
+          secondary: "#111111",
+          elevated: "#171717",
         },
-        accent: {
-          50: "#eff6ff",
-          100: "#dbeafe",
-          200: "#bfdbfe",
-          300: "#93c5fd",
-          400: "#60a5fa",
-          500: "#3b82f6",
-          600: "#2563eb",
-          700: "#1d4ed8",
-          800: "#1e40af",
-          900: "#1e3a5f",
-          950: "#172554",
+        border: {
+          subtle: "#1E1E1E",
+          default: "#262626",
+          hover: "#383838",
         },
-        surface: {
-          0: "#09090b",
-          1: "#18181b",
-          2: "#27272a",
-          3: "#3f3f46",
-          4: "#52525b",
+        text: {
+          primary: "#FFFFFF",
+          secondary: "#A3A3A3",
+          muted: "#737373",
+        },
+        gold: {
+          DEFAULT: "#D4AF37",
+          light: "#E6C76B",
+          hover: "#F0D878",
+          subtle: "rgba(212, 175, 55, 0.12)",
+          border: "rgba(212, 175, 55, 0.25)",
+          glow: "rgba(212, 175, 55, 0.15)",
+        },
+        status: {
+          success: "#22C55E",
+          error: "#EF4444",
+          warning: "#F59E0B",
         },
       },
       borderRadius: {
-        "4xl": "2rem",
+        xs: "0.25rem",
+        sm: "0.375rem",
+        md: "0.5rem",
+        lg: "0.75rem",
+        xl: "1rem",
+        "2xl": "1.25rem",
+        "3xl": "1.5rem",
+      },
+      boxShadow: {
+        gold: "0 0 20px rgba(212, 175, 55, 0.15)",
+        "gold-lg": "0 0 35px rgba(212, 175, 55, 0.25)",
+        subtle: "0 4px 20px rgba(0, 0, 0, 0.5)",
+        elevated: "0 10px 30px rgba(0, 0, 0, 0.7)",
       },
       animation: {
-        "fade-in": "fadeIn 0.5s ease-out",
-        "slide-up": "slideUp 0.5s ease-out",
-        "slide-down": "slideDown 0.3s ease-out",
-        shimmer: "shimmer 2s infinite linear",
-        "pulse-glow": "pulseGlow 2s infinite ease-in-out",
-        "border-glow": "borderGlow 3s infinite linear",
+        "fade-in": "fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+        "slide-up": "slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+        pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        shimmer: "shimmer 2.5s infinite linear",
       },
       keyframes: {
         fadeIn: {
-          "0%": { opacity: "0" },
-          "100%": { opacity: "1" },
+          "0%": { opacity: "0", transform: "scale(0.98)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
         },
         slideUp: {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        slideDown: {
-          "0%": { opacity: "0", transform: "translateY(-10px)" },
+          "0%": { opacity: "0", transform: "translateY(12px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
-        pulseGlow: {
-          "0%, 100%": { opacity: "0.4" },
-          "50%": { opacity: "1" },
-        },
-        borderGlow: {
-          "0%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
-          "100%": { backgroundPosition: "0% 50%" },
-        },
-      },
-      backgroundImage: {
-        "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
     },
   },
