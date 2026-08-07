@@ -1,0 +1,53 @@
+<!--
+========================================================
+
+File:
+index.html
+
+Purpose:
+Root HTML entry point for the Interview Agent application.
+
+Responsibilities:
+- Loads Google Fonts (Inter, JetBrains Mono)
+- Sets up viewport, theme-color, and SEO meta tags
+- Provides the root mount point for React
+- Preloads critical resources
+
+Connected Files:
+- src/main.tsx (React entry point mounts here)
+- public/favicon.svg
+
+Depends On:
+- Vite build system
+- Google Fonts CDN
+
+Notes:
+Keep this file minimal. All application logic lives in React.
+Dark mode is set as default via class on html element.
+
+========================================================
+-->
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#09090b" />
+    <meta name="description" content="AI-powered Interview Agent for adaptive technical interviews. Built for the ABTalks Vibe Coding Hackathon." />
+    <meta name="color-scheme" content="dark" />
+    <title>Interview Agent — AI-Powered Technical Interviews</title>
+
+    <!-- Google Fonts: Inter (UI) + JetBrains Mono (Code) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="bg-zinc-950 text-zinc-100 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
