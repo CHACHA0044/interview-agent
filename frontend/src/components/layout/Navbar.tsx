@@ -5,13 +5,13 @@ File:
 components/layout/Navbar.tsx
 
 Purpose:
-Top navigation bar matching Apple/Linear/Vercel minimal design guidelines.
+Top navigation bar matching Apple/Linear/Vercel design guidelines.
 
 Responsibilities:
 - Displays application logo with Gold icon highlight
-- Renders navigation items with active Gold indicator pill
+- Renders navigation links with generous spacing and active Gold indicators
 - Provides glassmorphism with backdrop blur on scroll
-- Ensures correct positioning without content collision
+- Operates reliably on desktop and mobile viewports
 
 Connected Files:
 - src/layouts/RootLayout.tsx
@@ -19,11 +19,10 @@ Connected Files:
 
 Depends On:
 - react-router (Link, useLocation)
-- lucide-react (Brain, Users, MessageSquare, Info, Settings)
-- motion
+- lucide-react (Brain, Users, MessageSquare, Info, Settings, Sparkles)
 
 Notes:
-Active link gets a Gold (#D4AF37) subtle background and bottom highlight pill.
+Clean text navigation with generous gap spacing. Active route highlighted with Gold.
 
 ========================================================
 */
@@ -35,6 +34,7 @@ import {
   MessageSquare,
   Settings,
   Info,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { APP_NAME } from "@/constants";
@@ -51,29 +51,30 @@ export function Navbar() {
   const location = useLocation();
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#0A0A0A]/85 backdrop-blur-md border-b border-[#262626]">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-[#070707]/85 backdrop-blur-xl border-b border-[#1A1A1A]">
       <div className="max-w-7xl mx-auto px-6 sm:px-8">
-        <div className="flex items-center justify-between h-20">
+        <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
           <Link
             to="/"
             className="flex items-center gap-3 group focus:outline-none"
           >
-            <div className="h-9 w-9 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37] group-hover:border-[#D4AF37]/50 transition-colors shadow-md">
+            <div className="h-9 w-9 rounded-xl bg-[#121212] border border-[#262626] flex items-center justify-center text-[#D4AF37] group-hover:border-[#D4AF37]/50 transition-colors shadow-inner">
               <Brain className="h-5 w-5" />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold tracking-tight text-[#FFFFFF] group-hover:text-[#D4AF37] transition-colors">
+              <span className="text-sm font-bold tracking-tight text-[#FFFFFF] group-hover:text-[#D4AF37] transition-colors flex items-center gap-1.5">
                 {APP_NAME}
+                <Sparkles className="h-3 w-3 text-[#D4AF37]" />
               </span>
-              <span className="text-[10px] font-mono text-[#737373] tracking-widest uppercase">
+              <span className="text-[10px] font-mono text-[#737373] tracking-widest uppercase hidden sm:block">
                 Enterprise AI Assessment
               </span>
             </div>
           </Link>
 
           {/* Navigation Links */}
-          <nav className="flex items-center gap-1.5 bg-[#111111]/80 p-1.5 rounded-2xl border border-[#262626]">
+          <nav className="flex items-center gap-1 sm:gap-2">
             {NAV_ITEMS.map((item) => {
               const isActive =
                 item.href === "/"
@@ -86,14 +87,14 @@ export function Navbar() {
                   key={item.href}
                   to={item.href}
                   className={cn(
-                    "relative flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-200",
+                    "relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-200",
                     isActive
-                      ? "text-[#D4AF37] bg-[#171717] border border-[#D4AF37]/30 shadow-sm"
-                      : "text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#171717]/60"
+                      ? "text-[#D4AF37] bg-[#141414] border border-[#D4AF37]/30 shadow-sm"
+                      : "text-[#A3A3A3] hover:text-[#FFFFFF] hover:bg-[#121212]"
                   )}
                 >
                   <Icon className={cn("h-3.5 w-3.5", isActive ? "text-[#D4AF37]" : "text-[#737373]")} />
-                  <span>{item.label}</span>
+                  <span className="hidden md:inline">{item.label}</span>
                 </Link>
               );
             })}
