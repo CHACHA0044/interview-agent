@@ -5,28 +5,23 @@ File:
 pages/InterviewPage.tsx
 
 Purpose:
-3-column luxury workspace powering live AI assessment dialogue.
+3-Column Live Assessment Dashboard layout.
 
 Responsibilities:
-- Left Column: Curriculum progress, session telemetry, question navigator
-- Middle Column: Live chat stream with Markdown formatting and typing indicator
-- Right Column: Candidate profile summary, live evaluation skills breakdown, timeline
-- Bottom Bar: Premium text input with keyboard shortcuts (`⌘ + Enter`), voice trigger placeholder (disabled)
+- Left Column: Candidate profile identity & topic coverage progress
+- Center Column: Scrollable chat dialogue stream & fixed bottom answer bar
+- Right Column: Live telemetry (Timer, Active Signals, Assessment Controls)
 
 Connected Files:
 - src/app/router.tsx
 - src/stores/interview.store.ts
-- src/hooks/use-timer.ts
 
 Depends On:
-- react
-- react-router (useNavigate, useParams)
-- react-markdown
-- lucide-react
-- motion
+- react, react-router
+- react-markdown, motion, lucide-react
 
 Notes:
-Adheres strictly to the Black & Gold palette (#0A0A0A bg, #111111 cards, #D4AF37 accents).
+Uses fixed-height 3-column desktop layout utilizing max-w-[1440px] bounds.
 
 ========================================================
 */
@@ -58,102 +53,88 @@ import { EndInterviewModal } from "@/components/features/interview/EndInterviewM
 
 export function InterviewPage() {
   const navigate = useNavigate();
-  const { sessionId } = useParams();
+  const { sessionId } = useParams<{ sessionId: string }>();
 
   const {
-    session,
+    activeSession,
     messages,
-    isAgentTyping,
+    candidate,
+    isGenerating,
     feedback,
     sendMessage,
-    endInterview,
+    endSession,
   } = useInterviewStore();
 
-  const { formattedTime, start: startTimer, stop: stopTimer } = useTimer();
-
-  const [inputMessage, setInputMessage] = useState("");
+  const [inputAnswer, setInputAnswer] = useState("");
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const [isEndModalOpen, setIsEndModalOpen] = useState(false);
-  const [isFeedbackDrawerOpen, setIsFeedbackDrawerOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConcluding, setIsConcluding] = useState(false);
 
-  const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  const durationMinutes = activeSession?.config.durationMinutes || 30;
+  const { formattedTime, percentRemaining } = useTimer({
+    initialSeconds: durationMinutes * 60,
+    isActive: !!activeSession && activeSession.status === "in_progress",
+  });
 
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isAgentTyping]);
-
-  useEffect(() => {
-    startTimer();
-    return () => stopTimer();
-  }, [startTimer, stopTimer]);
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [messages, isGenerating]);
 
   const handleSend = async () => {
-    if (!inputMessage.trim() || isAgentTyping) return;
-    const msg = inputMessage;
-    setInputMessage("");
-    await sendMessage(msg);
+    if (!inputAnswer.trim() || isGenerating) return;
+    const text = inputAnswer;
+    setInputAnswer("");
+    await sendMessage(text);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      e.preventDefault();
-      handleSend();
-    } else if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
   };
 
   const handleConfirmEndSession = async () => {
-    setIsSubmitting(true);
-    await endInterview();
-    setIsSubmitting(false);
-    setIsEndModalOpen(false);
-    navigate(`/interview/${sessionId}/feedback`);
+    setIsConcluding(true);
+    try {
+      await endSession();
+      setIsEndModalOpen(false);
+      navigate(`/interview/${sessionId}/feedback`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsConcluding(false);
+    }
   };
-
-  if (!session) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4">
-        <p className="text-[#A3A3A3] text-sm">No active interview session found.</p>
-        <Button onClick={() => navigate("/interview/setup")}>Configure Assessment Session</Button>
-      </div>
-    );
-  }
-
-  const { candidate } = session;
-  const currentQ = session.currentQuestionIndex + 1;
-  const totalQ = session.questionCount;
-  const questionProgress = (currentQ / totalQ) * 100;
 
   return (
     <PageTransition>
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 flex flex-col h-[calc(100vh-7.5rem)] gap-4">
-        {/* Top Control Bar */}
-        <div className="flex items-center justify-between bg-[#111111] border border-[#262626] rounded-2xl px-6 py-3 shrink-0">
-          <div className="flex items-center gap-4">
-            <Badge variant="gold" className="py-1 px-3">
-              <Sparkles className="h-3.5 w-3.5 mr-1 text-[#D4AF37]" />
-              Live AI Dialogue Assessment
-            </Badge>
-            <span className="text-xs font-mono text-[#737373]">
-              SESSION: <span className="text-[#FFFFFF]">{session.sessionId}</span>
-            </span>
+      <div className="max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-12 h-[calc(100vh-140px)] flex flex-col space-y-4">
+        {/* Top Minimal Workspace Bar */}
+        <div className="flex items-center justify-between bg-[#0F0F0F] px-6 py-3 rounded-2xl border border-[#1F1F1F] shrink-0">
+          <div className="flex items-center gap-3">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#22C55E] animate-pulse" />
+            <span className="text-xs font-mono font-bold text-[#FFFFFF]">SESSION ID: {sessionId}</span>
+            <Badge variant="gold" className="text-[10px]">ADAPTIVE EVALUATION</Badge>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-xs font-mono text-[#A3A3A3] bg-[#171717] px-3 py-1.5 rounded-xl border border-[#262626]">
-              <Clock className="h-3.5 w-3.5 text-[#D4AF37]" />
+            <div className="flex items-center gap-2 bg-[#141414] px-3 py-1.5 rounded-xl border border-[#222222] font-mono text-xs text-[#D4AF37]">
+              <Clock className="h-3.5 w-3.5" />
               <span>{formattedTime}</span>
             </div>
 
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setIsFeedbackDrawerOpen(true)}
+              onClick={() => setIsFeedbackOpen(true)}
               icon={<BarChart2 className="h-3.5 w-3.5" />}
             >
-              Live Telemetry
+              Telemetry
             </Button>
 
             <Button
@@ -167,229 +148,173 @@ export function InterviewPage() {
           </div>
         </div>
 
-        {/* 3-Column Assessment Workspace */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-hidden">
-          {/* Left Column: Curriculum & Session Telemetry */}
-          <div className="hidden lg:flex lg:col-span-3 flex-col gap-4 overflow-y-auto">
-            {/* Session Progress Card */}
-            <Card variant="default" className="p-5 space-y-4">
-              <div className="flex items-center justify-between border-b border-[#262626] pb-3">
-                <span className="text-xs font-bold text-[#FFFFFF] flex items-center gap-1.5">
-                  <Terminal className="h-4 w-4 text-[#D4AF37]" /> Session Telemetry
-                </span>
-                <span className="text-xs font-mono text-[#D4AF37]">
-                  {currentQ} / {totalQ}
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-[#737373]">
-                  <span>Question Navigator</span>
-                  <span>{Math.round(questionProgress)}%</span>
+        {/* 3-Column Desktop Grid Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+          {/* ========================================================
+             Left Column: Candidate Context & Topics (3 cols / 280px)
+             ======================================================== */}
+          <div className="lg:col-span-3 bg-[#0F0F0F] border border-[#1F1F1F] rounded-2xl p-5 flex flex-col justify-between space-y-6 overflow-y-auto hidden lg:flex">
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 border-b border-[#1F1F1F] pb-4">
+                <div className="h-10 w-10 rounded-xl bg-[#171717] border border-[#D4AF37]/30 flex items-center justify-center text-[#D4AF37]">
+                  <User className="h-5 w-5" />
                 </div>
-                <Progress value={questionProgress} size="sm" color="gold" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#FFFFFF]">{candidate?.member.name || "Candidate"}</h3>
+                  <span className="text-[11px] text-[#A3A3A3] block">{candidate?.member.jobRole}</span>
+                </div>
               </div>
 
-              {/* Question Navigator Pills */}
-              <div className="grid grid-cols-5 gap-1.5 pt-2">
-                {Array.from({ length: totalQ }).map((_, i) => {
-                  const isPast = i < currentQ - 1;
-                  const isCurrent = i === currentQ - 1;
+              <div className="space-y-3">
+                <span className="text-[10px] font-mono text-[#737373] uppercase tracking-wider block">
+                  Cohort Signals
+                </span>
+                <div className="bg-[#141414] p-3 rounded-xl border border-[#222222] space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#737373]">Missions Completed</span>
+                    <span className="text-[#FFFFFF] font-mono font-semibold">{candidate?.signals.missionsCompleted} / 31</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#737373]">Commit Days</span>
+                    <span className="text-[#D4AF37] font-mono font-semibold">{candidate?.signals.commitDays} Days</span>
+                  </div>
+                </div>
+              </div>
 
-                  return (
-                    <div
-                      key={i}
-                      className={`h-7 rounded-lg flex items-center justify-center text-[10px] font-mono font-semibold transition-all ${
-                        isCurrent
-                          ? "bg-[#D4AF37] text-[#0A0A0A] shadow-sm"
-                          : isPast
-                          ? "bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/30"
-                          : "bg-[#171717] text-[#737373] border border-[#262626]"
-                      }`}
-                    >
-                      Q{i + 1}
+              <div className="space-y-3">
+                <span className="text-[10px] font-mono text-[#737373] uppercase tracking-wider block">
+                  Target Curriculum Scope
+                </span>
+                <div className="space-y-2">
+                  {activeSession?.config.topics.map((t) => (
+                    <div key={t} className="flex items-center gap-2 text-xs text-[#FFFFFF] bg-[#141414] p-2.5 rounded-xl border border-[#222222]">
+                      <BookOpen className="h-3.5 w-3.5 text-[#D4AF37] shrink-0" />
+                      <span className="truncate">{t}</span>
                     </div>
-                  );
-                })}
-              </div>
-            </Card>
-
-            {/* Curriculum Alignment Card */}
-            <Card variant="default" className="p-5 space-y-4 flex-1">
-              <div className="border-b border-[#262626] pb-3">
-                <span className="text-xs font-bold text-[#FFFFFF] flex items-center gap-1.5">
-                  <BookOpen className="h-4 w-4 text-[#D4AF37]" /> Curriculum Coverage
-                </span>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                <div className="p-3 rounded-xl bg-[#171717] border border-[#262626] space-y-1">
-                  <span className="text-[10px] text-[#737373] uppercase font-mono">Cohort Milestone</span>
-                  <p className="font-semibold text-[#FFFFFF]">Day 7–10: Embeddings & Vector DBs</p>
-                </div>
-
-                <div className="p-3 rounded-xl bg-[#171717] border border-[#262626] space-y-1">
-                  <span className="text-[10px] text-[#737373] uppercase font-mono">Active Target</span>
-                  <p className="font-semibold text-[#D4AF37]">RAG Retrieval & Matching Engines</p>
+                  ))}
                 </div>
               </div>
-            </Card>
+            </div>
+
+            <div className="pt-4 border-t border-[#1F1F1F] text-[10px] font-mono text-[#525252] text-center">
+              GROUNDED RUBRIC v1.0
+            </div>
           </div>
 
-          {/* Middle Column: Live Conversation Stream */}
-          <div className="lg:col-span-6 flex flex-col bg-[#111111] border border-[#262626] rounded-2xl overflow-hidden">
-            {/* Dialogue Messages Container */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {/* ========================================================
+             Center Column: Fixed Chat Stream (6 cols / Main Viewport)
+             ======================================================== */}
+          <div className="lg:col-span-6 bg-[#0F0F0F] border border-[#1F1F1F] rounded-2xl p-5 flex flex-col justify-between min-h-0 shadow-2xl">
+            {/* Scrollable Message History */}
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto space-y-4 pr-2">
               {messages.map((msg) => {
-                if (msg.role === "system") {
-                  return (
-                    <div key={msg.id} className="flex justify-center my-2">
-                      <span className="text-[11px] font-mono text-[#737373] bg-[#171717] px-3 py-1 rounded-full border border-[#262626]">
-                        {msg.content}
-                      </span>
-                    </div>
-                  );
-                }
-
                 const isAgent = msg.role === "agent";
-
                 return (
                   <motion.div
                     key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.25 }}
-                    className={`flex items-start gap-3.5 ${isAgent ? "" : "flex-row-reverse"}`}
+                    className={`flex items-start gap-3 ${isAgent ? "" : "flex-row-reverse"}`}
                   >
-                    {/* Role Avatar */}
                     <div
-                      className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 border ${
+                      className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
                         isAgent
-                          ? "bg-[#171717] text-[#D4AF37] border-[#D4AF37]/30"
-                          : "bg-[#171717] text-[#FFFFFF] border-[#262626]"
+                          ? "bg-[#171717] border border-[#D4AF37]/30 text-[#D4AF37]"
+                          : "bg-[#D4AF37] text-[#0A0A0A]"
                       }`}
                     >
-                      {isAgent ? <Bot className="h-4.5 w-4.5" /> : <User className="h-4.5 w-4.5" />}
+                      {isAgent ? <Bot className="h-4 w-4" /> : <User className="h-4 w-4" />}
                     </div>
 
-                    {/* Message Bubble */}
                     <div
-                      className={`max-w-xl rounded-2xl p-5 text-sm ${
+                      className={`p-4 rounded-2xl max-w-lg text-xs leading-relaxed border ${
                         isAgent
-                          ? "bg-[#171717] border border-[#262626] text-[#FFFFFF]"
-                          : "bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#FFFFFF]"
+                          ? "bg-[#141414] border-[#222222] text-[#FFFFFF]"
+                          : "bg-[#D4AF37]/10 border-[#D4AF37]/30 text-[#FFFFFF]"
                       }`}
                     >
-                      <div className="prose-interview">
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
-                      </div>
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   </motion.div>
                 );
               })}
 
-              {isAgentTyping && <TypingIndicator />}
-              <div ref={chatBottomRef} />
+              {isGenerating && <TypingIndicator />}
             </div>
 
-            {/* Bottom Text Input Bar */}
-            <div className="p-4 border-t border-[#262626] bg-[#0A0A0A]/60">
-              <div className="relative flex items-center gap-3">
+            {/* Fixed Bottom Input Bar */}
+            <div className="pt-4 border-t border-[#1F1F1F] space-y-2">
+              <div className="flex items-end gap-3">
                 <Textarea
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder="Formulate technical response... (Press Enter to send, Shift+Enter for newline)"
+                  value={inputAnswer}
+                  onChange={(e) => setInputAnswer(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Type your response... (Press Enter or ⌘+Enter to submit)"
-                  className="pr-28 min-h-[70px] text-sm"
+                  className="min-h-[50px] max-h-[100px] py-3 text-xs bg-[#141414] border-[#222222]"
                 />
-
-                <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                  <button
-                    disabled
-                    className="p-2 rounded-xl bg-[#171717] border border-[#262626] text-[#737373] cursor-not-allowed"
-                    title="Voice input disabled"
-                  >
-                    <MicOff className="h-4 w-4" />
-                  </button>
-
-                  <Button
-                    size="sm"
-                    onClick={handleSend}
-                    disabled={!inputMessage.trim() || isAgentTyping}
-                    icon={<Send className="h-4 w-4" />}
-                  />
-                </div>
+                <Button
+                  onClick={handleSend}
+                  disabled={!inputAnswer.trim() || isGenerating}
+                  icon={<Send className="h-4 w-4" />}
+                  className="h-[50px] px-5"
+                >
+                  Send
+                </Button>
               </div>
             </div>
           </div>
 
-          {/* Right Column: Candidate Profile & Live Evaluation */}
-          <div className="hidden lg:flex lg:col-span-3 flex-col gap-4 overflow-y-auto">
-            {/* Candidate Profile Summary Card */}
-            <Card variant="default" className="p-5 space-y-4">
-              <div className="flex items-center gap-3 border-b border-[#262626] pb-3">
-                <div className="h-10 w-10 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37] font-semibold text-sm">
-                  {candidate.member.name.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-[#FFFFFF]">{candidate.member.name}</h3>
-                  <p className="text-xs text-[#A3A3A3]">{candidate.member.jobRole}</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-[#171717] p-2 rounded-lg border border-[#262626]">
-                  <span className="text-[#737373] block text-[10px]">Experience</span>
-                  <span className="text-[#FFFFFF] font-semibold">{candidate.member.yearsExperience} Yrs</span>
-                </div>
-                <div className="bg-[#171717] p-2 rounded-lg border border-[#262626]">
-                  <span className="text-[#737373] block text-[10px]">Missions</span>
-                  <span className="text-[#D4AF37] font-mono font-semibold">{candidate.signals.missionsCompleted}/31</span>
-                </div>
-              </div>
-            </Card>
-
-            {/* Live Evaluation Telemetry */}
-            <Card variant="default" className="p-5 space-y-4 flex-1">
-              <div className="border-b border-[#262626] pb-3">
-                <span className="text-xs font-bold text-[#FFFFFF] flex items-center gap-1.5">
-                  <Award className="h-4 w-4 text-[#D4AF37]" /> Live Mastery Meters
-                </span>
+          {/* ========================================================
+             Right Column: Interim Telemetry (3 cols / 320px)
+             ======================================================== */}
+          <div className="lg:col-span-3 bg-[#0F0F0F] border border-[#1F1F1F] rounded-2xl p-5 flex flex-col justify-between space-y-6 overflow-y-auto hidden lg:flex">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-[#1F1F1F] pb-4">
+                <h3 className="text-sm font-bold text-[#FFFFFF] flex items-center gap-2">
+                  <BarChart2 className="h-4 w-4 text-[#D4AF37]" /> Session Telemetry
+                </h3>
               </div>
 
               <div className="space-y-3">
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#A3A3A3]">Embeddings & Vector Search</span>
-                    <span className="text-[#D4AF37] font-mono">90%</span>
-                  </div>
-                  <Progress value={90} size="sm" color="gold" />
-                </div>
+                <span className="text-[10px] font-mono text-[#737373] uppercase tracking-wider block">
+                  Time Remaining Gauge
+                </span>
+                <Progress value={percentRemaining} size="md" color="gold" showLabel />
+              </div>
 
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#A3A3A3]">Prompt Tuning & Guardrails</span>
-                    <span className="text-[#D4AF37] font-mono">85%</span>
+              <div className="space-y-3">
+                <span className="text-[10px] font-mono text-[#737373] uppercase tracking-wider block">
+                  Real-time Signal Status
+                </span>
+                <div className="space-y-2 text-xs">
+                  <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                    <span className="text-[#A3A3A3]">Response Precision</span>
+                    <span className="font-mono text-[#22C55E]">High</span>
                   </div>
-                  <Progress value={85} size="sm" color="gold" />
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#A3A3A3]">Agentic Tools & MCP</span>
-                    <span className="text-[#D4AF37] font-mono">80%</span>
+                  <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                    <span className="text-[#A3A3A3]">Grounding Rubric</span>
+                    <span className="font-mono text-[#D4AF37]">94%</span>
                   </div>
-                  <Progress value={80} size="sm" color="gold" />
                 </div>
               </div>
-            </Card>
+            </div>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-center"
+              onClick={() => setIsFeedbackOpen(true)}
+              icon={<Award className="h-3.5 w-3.5" />}
+            >
+              View Interim Metrics
+            </Button>
           </div>
         </div>
 
-        {/* Popups */}
+        {/* Drawers & Modals */}
         <FeedbackDrawer
-          isOpen={isFeedbackDrawerOpen}
-          onClose={() => setIsFeedbackDrawerOpen(false)}
+          isOpen={isFeedbackOpen}
+          onClose={() => setIsFeedbackOpen(false)}
           feedback={feedback}
           onViewFullReport={() => navigate(`/interview/${sessionId}/feedback`)}
         />
@@ -398,7 +323,7 @@ export function InterviewPage() {
           isOpen={isEndModalOpen}
           onClose={() => setIsEndModalOpen(false)}
           onConfirm={handleConfirmEndSession}
-          isSubmitting={isSubmitting}
+          isSubmitting={isConcluding}
         />
       </div>
     </PageTransition>

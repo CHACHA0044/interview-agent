@@ -5,13 +5,12 @@ File:
 components/layout/Navbar.tsx
 
 Purpose:
-Top navigation bar matching Apple/Linear/Vercel design guidelines.
+Top navigation bar aligned with global 1440px container width.
 
 Responsibilities:
-- Displays application logo with Gold icon highlight
-- Renders navigation links with generous spacing and active Gold indicators
-- Provides glassmorphism with backdrop blur on scroll
-- Operates reliably on desktop and mobile viewports
+- Displays application logo with Gold mark
+- Aligns text links with grid container boundaries
+- Renders responsive navigation with clear active states
 
 Connected Files:
 - src/layouts/RootLayout.tsx
@@ -22,7 +21,7 @@ Depends On:
 - lucide-react (Brain, Users, MessageSquare, Info, Settings, Sparkles)
 
 Notes:
-Clean text navigation with generous gap spacing. Active route highlighted with Gold.
+Navbar container width matches max-w-[1440px] px-6 sm:px-10 lg:px-12.
 
 ========================================================
 */
@@ -52,12 +51,12 @@ export function Navbar() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#070707]/85 backdrop-blur-xl border-b border-[#1A1A1A]">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8">
+      <div className="max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-12">
         <div className="flex items-center justify-between h-16 sm:h-20">
           {/* Logo */}
           <Link
             to="/"
-            className="flex items-center gap-3 group focus:outline-none"
+            className="flex items-center gap-3 group focus:outline-none shrink-0"
           >
             <div className="h-9 w-9 rounded-xl bg-[#121212] border border-[#262626] flex items-center justify-center text-[#D4AF37] group-hover:border-[#D4AF37]/50 transition-colors shadow-inner">
               <Brain className="h-5 w-5" />

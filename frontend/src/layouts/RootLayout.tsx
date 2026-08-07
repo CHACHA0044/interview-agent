@@ -5,12 +5,12 @@ File:
 layouts/RootLayout.tsx
 
 Purpose:
-Root layout container for the Black & Gold application theme.
+Root layout container establishing the global 1440px desktop grid container.
 
 Responsibilities:
-- Renders sticky Navbar with proper top clearance (pt-32) to eliminate text clipping
-- Provides background radial gradients for modern Vercel/Linear dark aesthetics
-- Houses Sonner toast container with Gold accent borders
+- Enforces standardized max width (max-w-[1440px]) and padding across all routes
+- Renders sticky header navigation aligned with content container
+- Provides clean dark background surfaces and subtle glow ambient gradients
 
 Connected Files:
 - src/app/router.tsx
@@ -21,7 +21,7 @@ Depends On:
 - sonner
 
 Notes:
-pt-32 (128px top padding) guarantees page hero titles never get clipped under sticky navbar.
+Standardized grid system container ensures consistent left/right alignment across all pages.
 
 ========================================================
 */
@@ -32,18 +32,17 @@ import { Navbar } from "@/components/layout/Navbar";
 
 export function RootLayout() {
   return (
-    <div className="min-h-screen bg-[#070707] text-[#FFFFFF] relative selection:bg-[#D4AF37]/20 selection:text-[#FFFFFF] overflow-x-hidden">
-      {/* Subtle Background Glow Radial Gradients */}
+    <div className="min-h-screen bg-[#070707] text-[#FFFFFF] relative selection:bg-[#D4AF37]/20 selection:text-[#FFFFFF] flex flex-col">
+      {/* Background Radial Glow */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-radial from-[#D4AF37]/10 via-[#D4AF37]/2 to-transparent blur-3xl opacity-60" />
-        <div className="absolute top-1/3 -right-60 w-[600px] h-[600px] bg-radial from-[#D4AF37]/5 to-transparent blur-3xl opacity-30" />
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[1200px] h-[500px] bg-radial from-[#D4AF37]/8 via-[#D4AF37]/2 to-transparent blur-3xl opacity-50" />
       </div>
 
-      {/* Sticky Header Navigation */}
+      {/* Fixed Sticky Header Navigation */}
       <Navbar />
 
-      {/* Main Page Content */}
-      <main className="relative z-10 pt-32 pb-24 min-h-screen">
+      {/* Main Container */}
+      <main className="relative z-10 flex-1 pt-28 lg:pt-32 pb-16 w-full">
         <Outlet />
       </main>
 
