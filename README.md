@@ -118,10 +118,27 @@ Notes: [Developer notes]
 
 ---
 
-## 🔮 Future Backend Roadmap
+## ☁️ Render Single-Service Deployment
 
-See [`backend-requirements.md`](./backend-requirements.md) for full backend specs including:
-- FastAPI `POST /api/interview` agent handlers
-- LangGraph / CrewAI multi-agent orchestration
-- ChromaDB / PGVector RAG retrieval pipeline
-- Redis session memory buffer
+The backend can be deployed to Render as a single web service that runs all three internal logical microservices (`gateway`, `interview-agent`, and `ai-intelligence`) communicating over loopback HTTP (`127.0.0.1`).
+
+### Architecture Comparison
+- **Local Dev (Docker Compose)**: Multi-container setup where services run on separate networks (`http://interview-agent:8001` and `http://ai-intelligence:8002`) alongside local Redis and Qdrant instances.
+- **Render Web Service (Single Container)**: Runs inside a single Docker container via `backend/start.sh`:
+  - `ai-intelligence` listens on `127.0.0.1:8002`
+  - `interview-agent` listens on `127.0.0.1:8001`
+  - `gateway` listens on `0.0.0.0:$PORT` (the only externally exposed service)
+
+### Deployment Configuration
+- **Root Directory**: `backend`
+- **Dockerfile**: `Dockerfile` (`backend/Dockerfile`)
+- **Port Handling**: Binds dynamically to `$PORT` provided by Render (defaults to `8000` locally).
+- **Environment Variables**:
+  - `LLM_PROVIDER`: Set to `fake` by default for zero-key boot. Set to `openai` with `LLM_API_KEY` for live LLM operations.
+  - `CURRICULUM_PATH`: Set to `/app/curriculum.json`.
+  - `CANDIDATES_PATH`: Set to `/app/candidates.json`.
+  - `FRONTEND_ORIGINS`: Allowed CORS origins for the frontend app.
+  - `REDIS_URL` & `QDRANT_URL`: Optional background stores. In-memory fallbacks automatically handle session state and RAG retrieval when missing.
+- **Health Checks**:
+  - `/health` on Gateway acts as a lightweight liveness check.
+

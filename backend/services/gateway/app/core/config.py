@@ -10,6 +10,7 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
+    port: int = 8000
     backend_port: int = 8000
     redis_url: str = "redis://redis:6379/0"
     session_ttl_seconds: int = 3600
