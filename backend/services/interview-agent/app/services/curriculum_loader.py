@@ -67,7 +67,14 @@ class CurriculumLoader:
             self.day_map: Dict[int, CurriculumDayDef] = {d.day: d for d in self.data.days}
             self.module_day_map: Dict[int, int] = {}
             for mod in self.data.modules:
-                for day_id in mod.days:
+                # Module `days` are [start, end] ranges in curriculum.json; expand them
+                # so every day inside the range maps to its parent module.
+                module_days = (
+                    range(mod.days[0], mod.days[1] + 1)
+                    if len(mod.days) == 2
+                    else mod.days
+                )
+                for day_id in module_days:
                     self.module_day_map[day_id] = mod.n
                     
         except FileNotFoundError:

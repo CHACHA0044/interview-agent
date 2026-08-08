@@ -20,6 +20,25 @@ from app.services.curriculum_loader import CurriculumLoader, CurriculumDayDef
 from app.services.curriculum_selection import extract_role_keywords, score_day_relevance, build_assessment_plan
 
 
+def test_module_day_ranges_expand_to_all_member_days():
+    """Module `days` in curriculum.json are [start, end] ranges; interior days must map to their parent module."""
+    import os
+
+    os.environ.setdefault("CURRICULUM_PATH", os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "curriculum.json"))
+    loader = CurriculumLoader()
+
+    # Module 3 spans [7, 10] -> interior days 8 and 9 must resolve to module 3.
+    assert loader.get_module_for_day(7) == 3
+    assert loader.get_module_for_day(8) == 3
+    assert loader.get_module_for_day(9) == 3
+    assert loader.get_module_for_day(10) == 3
+
+    # Module 4 spans [11, 15] -> interior day 12 must resolve to module 4.
+    assert loader.get_module_for_day(11) == 4
+    assert loader.get_module_for_day(12) == 4
+    assert loader.get_module_for_day(15) == 4
+
+
 def test_extract_role_keywords():
     assert set(extract_role_keywords("Senior Data Engineer")) == {"data"}
     assert set(extract_role_keywords("Machine Learning Intern")) == {"machine", "learning"}

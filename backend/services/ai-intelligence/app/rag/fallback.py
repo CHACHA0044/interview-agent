@@ -103,7 +103,12 @@ def fallback_retrieve(
         module_days = set()
         for mod in data.modules:
             if mod.n == int(module_filter):
-                module_days = set(mod.days)
+                # Module `days` are [start, end] ranges; expand them to all member days.
+                module_days = (
+                    set(range(mod.days[0], mod.days[1] + 1))
+                    if len(mod.days) == 2
+                    else set(mod.days)
+                )
                 break
         if module_days:
             return [_day_to_chunk(day) for day in data.days if day.day in module_days][:top_k]
