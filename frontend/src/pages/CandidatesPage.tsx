@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Search, UserCheck, Play, Filter, Award } from "lucide-react";
+import { Search, UserCheck, Play, Filter, Award, ChevronRight } from "lucide-react";
 import { Badge, Input, Button, SkeletonCard, EmptyState, Progress } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { CandidateDetailsModal } from "@/components/features/candidates/CandidateDetailsModal";
 import { useCandidates } from "@/hooks/use-candidates";
 import type { Candidate } from "@/types";
 import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface, Cluster } from "@/components/layout/system";
@@ -12,6 +13,7 @@ export function CandidatesPage() {
   const { data: candidates, isLoading } = useCandidates();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRole, setSelectedRole] = useState<string>("ALL");
+  const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null);
 
   const roles = ["ALL", "AI Engineer", "Senior Data Engineer", "DevOps Engineer", "Software Engineer"];
 
@@ -124,12 +126,20 @@ export function CandidatesPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setDetailCandidate(candidate)}
+                          aria-label={`View details for ${candidate.member.name}`}
+                          className="w-full flex items-center justify-between text-xs py-1 -my-1 rounded-lg transition-transform duration-200 hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50"
+                        >
                           <span className="text-[#737373] flex items-center gap-1">
                             <Award className="h-3.5 w-3.5 text-[#D4AF37]" /> Missions Done
                           </span>
-                          <span className="text-white font-mono font-medium">{candidate.signals.missionsCompleted} / 31</span>
-                        </div>
+                          <span className="text-white font-mono font-medium flex items-center gap-1">
+                            {candidate.signals.missionsCompleted} / 31
+                            <ChevronRight className="h-3.5 w-3.5 text-[#D4AF37]" />
+                          </span>
+                        </button>
                         <Progress value={completionRate} size="sm" color="gold" />
                       </div>
                     </div>
@@ -156,6 +166,8 @@ export function CandidatesPage() {
           )}
         </LayoutContainer>
       </Section>
+
+      <CandidateDetailsModal candidate={detailCandidate} onClose={() => setDetailCandidate(null)} />
     </PageTransition>
   );
 }
