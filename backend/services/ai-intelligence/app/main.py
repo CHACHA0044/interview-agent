@@ -32,5 +32,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from app.core.config import settings
+
 # Mount the internal API routes
 app.include_router(internal_ai_router)
+
+
+@app.get("/health")
+def root_health():
+    return {
+        "status": "ok",
+        "service": "ai-intelligence",
+        "provider": settings.llm_provider,
+    }
+
