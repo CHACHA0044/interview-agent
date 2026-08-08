@@ -29,6 +29,7 @@ getDerivedStateFromError and componentDidCatch lifecycle methods.
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -79,13 +80,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               {this.state.error.message}
             </pre>
           )}
-          <button
+          <Button
+            variant="secondary"
             onClick={this.handleRetry}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800 text-zinc-200 text-sm font-medium hover:bg-zinc-700 transition-colors cursor-pointer"
+            className="bg-zinc-800 text-zinc-200 hover:bg-zinc-700 hover:border-zinc-700 border-zinc-800"
+            icon={<RefreshCw className="h-4 w-4" />}
           >
-            <RefreshCw className="h-4 w-4" />
             Try Again
-          </button>
+          </Button>
         </div>
       );
     }

@@ -65,17 +65,15 @@ export function CandidatesPage() {
               <div className="col-span-4 md:col-span-4 xl:col-span-8">
                 <Cluster gap="sm" className="overflow-x-auto pb-1">
                   {roles.map((role) => (
-                    <button
+                    <Button
                       key={role}
+                      variant="chip"
+                      size="chip"
+                      pressed={selectedRole === role}
                       onClick={() => setSelectedRole(role)}
-                      className={`touch-target px-3.5 rounded-xl text-xs font-medium border cursor-pointer whitespace-nowrap ${
-                        selectedRole === role
-                          ? "bg-[#D4AF37] text-[#0A0A0A] font-semibold border-[#D4AF37]"
-                          : "bg-[#141414] text-[#A3A3A3] border-[#222222] hover:text-white"
-                      }`}
                     >
                       {role}
-                    </button>
+                    </Button>
                   ))}
                 </Cluster>
               </div>
@@ -126,11 +124,13 @@ export function CandidatesPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="sm"
                           onClick={() => setDetailCandidate(candidate)}
                           aria-label={`View details for ${candidate.member.name}`}
-                          className="w-full flex items-center justify-between text-xs py-1 -my-1 rounded-lg transition-transform duration-200 hover:scale-105 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50"
+                          className="w-full justify-between rounded-lg h-auto py-1 px-0 -my-1"
                         >
                           <span className="text-[#737373] flex items-center gap-1">
                             <Award className="h-3.5 w-3.5 text-[#D4AF37]" /> Missions Done
@@ -139,7 +139,7 @@ export function CandidatesPage() {
                             {candidate.signals.missionsCompleted} / 31
                             <ChevronRight className="h-3.5 w-3.5 text-[#D4AF37]" />
                           </span>
-                        </button>
+                        </Button>
                         <Progress value={completionRate} size="sm" color="gold" />
                       </div>
                     </div>

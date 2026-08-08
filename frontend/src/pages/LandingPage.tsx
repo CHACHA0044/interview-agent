@@ -1,5 +1,6 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   Brain,
   BarChart3,
@@ -12,11 +13,16 @@ import {
   Cpu,
   Users,
   CheckCircle2,
-  ChevronRight,
+  ChevronDown,
+  Activity,
+  WifiOff,
 } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { APP_NAME } from "@/constants";
+import { useCandidates } from "@/hooks/use-candidates";
+import { useCurriculum } from "@/hooks/use-curriculum";
+import { useSettingsStore } from "@/stores/settings.store";
 import {
   LayoutContainer,
   Section,
@@ -25,42 +31,186 @@ import {
   Surface,
   Stack,
 } from "@/components/layout/system";
+import { cn } from "@/lib/cn";
 
 const FEATURES = [
   {
     icon: Brain,
     title: "Adaptive Question Engine",
     description: "Dynamic dialogue trees that calibrate question difficulty based on candidate response depth.",
+    details: [
+      "Calibrates difficulty from the candidate's mission history before the first question",
+      "Branches into follow-up probes when a response misses expected concepts",
+      "Adapts question count and depth to the selected assessment plan",
+    ],
   },
   {
     icon: Layers,
     title: "31-Day Curriculum Aligned",
     description: "Covers vector search, RAG pipelines, fine-tuning, multi-agent orchestration, MCP, and K8s deployment.",
+    details: [
+      "8 modules spanning the full 31-day Enterprise AI Cohort",
+      "Questions grounded in the real curriculum day objectives",
+      "Ensures assessments stay anchored to cohort ground truth",
+    ],
   },
   {
     icon: BarChart3,
     title: "Executive Synthesis",
     description: "Generates radar breakdowns, technical strengths, weakness vectors, and actionable next steps.",
+    details: [
+      "Composite mastery rating derived from graded responses",
+      "Topic-level score breakdowns against expected concepts",
+      "Actionable growth trajectory with concrete next steps",
+    ],
   },
   {
     icon: ShieldCheck,
     title: "Objective Guardrails",
     description: "Grounded prompt structures prevent hallucinated scores and enforce uniform rubrics.",
+    details: [
+      "Zero-hallucination scoring enforced by grounded rubric prompts",
+      "Uniform evaluation criteria across every candidate session",
+      "Auditable per-question concept coverage tracking",
+    ],
   },
   {
     icon: Target,
     title: "Real-time Telemetry",
     description: "Live monitoring of elapsed time, topic coverage percentages, and active mission signals.",
+    details: [
+      "Elapsed session timer with live duration tracking",
+      "Topic coverage indicators update as questions are answered",
+      "Candidate mission and commit-streak context shown inline",
+    ],
   },
   {
     icon: Zap,
     title: "Instant API Readiness",
     description: "Decoupled service interfaces simplify migration from mock data to production endpoints.",
+    details: [
+      "Mock/live toggle in Settings switches data source without code changes",
+      "Gateway contract supports candidate intake and message turns",
+      "Service layer isolates backend wiring from UI components",
+    ],
   },
 ] as const;
 
+function FeatureCard({ feature }: { feature: (typeof FEATURES)[number] }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const Icon = feature.icon;
+
+  return (
+    <Surface
+      className={cn(
+        "col-span-4 md:col-span-4 xl:col-span-4 h-full cursor-pointer transition-all duration-300",
+        isExpanded ? "border-[#D4AF37]/40" : "hover:border-[#D4AF37]/25"
+      )}
+      padding="lg"
+    >
+      <button
+        type="button"
+        onClick={() => setIsExpanded((value) => !value)}
+        aria-expanded={isExpanded}
+        className="w-full h-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50 rounded-lg"
+      >
+        <div className="stack stack-md h-full justify-between">
+          <div className="stack stack-sm">
+            <motion.span
+              className="h-11 w-11 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37]"
+              whileHover={{ scale: 1.08, rotate: 6 }}
+              whileTap={{ scale: 0.95 }}
+              animate={
+                isExpanded
+                  ? { scale: [1, 1.12, 1], rotate: [0, -8, 0], transition: { duration: 0.6 } }
+                  : undefined
+              }
+            >
+              <Icon className="h-5 w-5" />
+            </motion.span>
+            <h3 className="text-base font-semibold text-white flex items-center justify-between gap-3">
+              <span>{feature.title}</span>
+              <motion.span
+                animate={{ rotate: isExpanded ? 180 : 0 }}
+                transition={{ duration: 0.25 }}
+                className="shrink-0 text-[#737373]"
+              >
+                <ChevronDown className="h-4 w-4" />
+              </motion.span>
+            </h3>
+            <p className="text-xs text-[#A3A3A3] leading-relaxed">{feature.description}</p>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {isExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                <ul className="stack stack-xs pt-1 border-t border-[#1F1F1F]">
+                  {feature.details.map((detail) => (
+                    <li key={detail} className="flex items-start gap-2 text-[11px] text-[#B5B5B5] leading-relaxed">
+                      <span className="mt-1 h-1 w-1 rounded-full bg-[#D4AF37] shrink-0" />
+                      {detail}
+                    </li>
+                  ))}
+                </ul>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </button>
+    </Surface>
+  );
+}
+
+function useGatewayStatus() {
+  const { useMockService, apiEndpoint } = useSettingsStore();
+  const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
+
+  useEffect(() => {
+    if (useMockService) {
+      setStatus("checking");
+      return;
+    }
+
+    let cancelled = false;
+    setStatus("checking");
+
+    const baseUrl = apiEndpoint.replace(/\/api\/interview\/?$/, "");
+    fetch(`${baseUrl}/health`, { method: "GET", signal: AbortSignal.timeout(5000) })
+      .then((res) => {
+        if (!cancelled) setStatus(res.ok ? "online" : "offline");
+      })
+      .catch(() => {
+        if (!cancelled) setStatus("offline");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [useMockService, apiEndpoint]);
+
+  return { useMockService, status };
+}
+
 export function LandingPage() {
   const navigate = useNavigate();
+  const { data: candidates } = useCandidates();
+  const { data: curriculum } = useCurriculum();
+  const { useMockService, status } = useGatewayStatus();
+
+  const candidateCount = candidates?.length ?? 0;
+  const moduleCount = curriculum?.modules.length ?? 8;
+  const dayCount = curriculum?.days.length ?? 31;
+
+  const isLive = !useMockService;
+  const isOnline = isLive && status === "online";
+  const isOffline = isLive && status === "offline";
+  const isChecking = isLive && status === "checking";
 
   return (
     <PageTransition>
@@ -115,10 +265,23 @@ export function LandingPage() {
               <Surface padding="lg" elevated className="stack stack-md">
                 <div className="flex items-center justify-between border-b border-[#1F1F1F] pb-4 text-xs font-mono text-[#737373]">
                   <span className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#D4AF37] animate-pulse" />
+                    <motion.span
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        isOnline ? "bg-[#22C55E]" : isOffline ? "bg-[#EF4444]" : "bg-[#D4AF37]"
+                      )}
+                      animate={isChecking || (useMockService && status === "checking") ? { opacity: [1, 0.4, 1] } : undefined}
+                      transition={{ duration: 1.2, repeat: Infinity }}
+                    />
                     <span className="text-white font-semibold">COHORT ASSESSOR v1.0</span>
                   </span>
-                  <span>ONLINE</span>
+                  <span
+                    className={cn(
+                      isOnline ? "text-[#22C55E]" : isOffline ? "text-[#EF4444]" : "text-[#D4AF37]"
+                    )}
+                  >
+                    {useMockService ? "SIMULATED" : isOnline ? "ONLINE" : isOffline ? "OFFLINE" : "CONNECTING"}
+                  </span>
                 </div>
 
                 <Stack gap="sm">
@@ -132,7 +295,7 @@ export function LandingPage() {
                         <span className="text-[10px] text-[#737373]">Enterprise AI Cohort Roster</span>
                       </div>
                     </div>
-                    <span className="text-sm font-mono font-bold text-[#D4AF37]">6 Active</span>
+                    <span className="text-sm font-mono font-bold text-[#D4AF37]">{candidateCount} Eligible</span>
                   </div>
                   <div className="surface surface-padding-sm flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -144,19 +307,35 @@ export function LandingPage() {
                         <span className="text-[10px] text-[#737373]">Vectors, RAG, Agents, MCP, K8s</span>
                       </div>
                     </div>
-                    <span className="text-sm font-mono font-bold text-[#D4AF37]">31 Modules</span>
+                    <span className="text-sm font-mono font-bold text-[#D4AF37]">{moduleCount} Modules · {dayCount} Days</span>
                   </div>
                   <div className="surface surface-padding-sm flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <span className="h-9 w-9 rounded-lg bg-[#1D1D1D] flex items-center justify-center text-[#22C55E]">
-                        <CheckCircle2 className="h-4 w-4" />
+                      <span className={cn(
+                        "h-9 w-9 rounded-lg flex items-center justify-center",
+                        isOnline ? "bg-[#22C55E]/10 text-[#22C55E]" : isOffline ? "bg-[#EF4444]/10 text-[#EF4444]" : "bg-[#1D1D1D] text-[#D4AF37]"
+                      )}>
+                        {isOnline ? <Activity className="h-4 w-4" /> : isOffline ? <WifiOff className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                       </span>
                       <div>
                         <span className="text-xs font-semibold text-white block">Evaluation Mode</span>
-                        <span className="text-[10px] text-[#737373]">Mock Services Operational</span>
+                        <span className="text-[10px] text-[#737373]">
+                          {useMockService
+                            ? "Mock Services Operational"
+                            : isOnline
+                              ? "Live Gateway Connected"
+                              : isOffline
+                                ? "Gateway Unreachable"
+                                : "Checking Gateway Health"}
+                        </span>
                       </div>
                     </div>
-                    <span className="text-xs font-mono font-semibold text-[#22C55E]">Ready</span>
+                    <Badge
+                      variant={isOnline ? "success" : isOffline ? "danger" : useMockService ? "warning" : "gold"}
+                      className="text-[10px]"
+                    >
+                      {useMockService ? "Simulated" : isOnline ? "Online" : isOffline ? "Offline" : "Checking"}
+                    </Badge>
                   </div>
                 </Stack>
               </Surface>
@@ -199,29 +378,13 @@ export function LandingPage() {
           <PageHeading
             align="center"
             title="Engineered for Rigorous Assessment"
-            description="Every system component is designed to deliver unbiased, highly detailed technical evaluations."
+            description="Every system component is designed to deliver unbiased, highly detailed technical evaluations. Click a card to expand its engineering detail."
           />
 
           <LayoutGrid gap="md">
-            {FEATURES.map((feature) => {
-              const Icon = feature.icon;
-              return (
-                <Surface key={feature.title} className="col-span-4 md:col-span-4 xl:col-span-4 h-full group" padding="lg">
-                  <div className="stack stack-md h-full justify-between">
-                    <div className="stack stack-sm">
-                      <span className="h-11 w-11 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37]">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <h3 className="text-base font-semibold text-white group-hover:text-[#D4AF37] transition-colors flex items-center justify-between gap-3">
-                        <span>{feature.title}</span>
-                        <ChevronRight className="h-4 w-4 text-[#737373] group-hover:text-[#D4AF37]" />
-                      </h3>
-                      <p className="text-xs text-[#A3A3A3] leading-relaxed">{feature.description}</p>
-                    </div>
-                  </div>
-                </Surface>
-              );
-            })}
+            {FEATURES.map((feature) => (
+              <FeatureCard key={feature.title} feature={feature} />
+            ))}
           </LayoutGrid>
 
           <p className="text-xs text-[#737373]">{APP_NAME} preserves application behavior while rebuilding layout architecture for responsive intent.</p>

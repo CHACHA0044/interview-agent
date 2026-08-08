@@ -67,13 +67,15 @@ export function FeedbackDrawer({
                 <h2 className="text-base font-bold text-[#FFFFFF] flex items-center gap-2">
                   <Award className="h-5 w-5 text-[#D4AF37]" /> Session Telemetry
                 </h2>
-                <button
+                <Button
+                  variant="ghost"
+                  iconOnly
+                  size="sm"
                   onClick={onClose}
                   aria-label="Close telemetry panel"
-                  className="p-1.5 rounded-lg text-[#737373] hover:text-[#FFFFFF] hover:bg-[#171717] transition-colors cursor-pointer"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                  className="rounded-lg text-[#737373]"
+                  icon={<X className="h-5 w-5" />}
+                />
               </div>
 
               {feedback ? (

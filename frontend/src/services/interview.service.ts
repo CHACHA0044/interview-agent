@@ -50,8 +50,6 @@ import { INTERVIEW_CONFIG } from "@/constants";
 import { useSettingsStore } from "@/stores/settings.store";
 import dayjs from "dayjs";
 
-const SIMULATED_DELAY = 1200;
-
 /** Real feedback received from the gateway, keyed by sessionId (live mode). */
 const liveFeedbackBySession = new Map<string, InterviewFeedback>();
 
@@ -66,6 +64,14 @@ function delay(ms: number): Promise<void> {
 
 function isMockMode(): boolean {
   return useSettingsStore.getState().useMockService;
+}
+
+function mockLatency(): number {
+  return useSettingsStore.getState().simulatedLatencyMs;
+}
+
+function requestTimeoutMs(): number {
+  return useSettingsStore.getState().requestTimeoutMs;
 }
 
 function liveEndpoint(): string {
@@ -85,6 +91,7 @@ async function postTurn(body: {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(requestTimeoutMs()),
   });
 
   if (!response.ok) {
@@ -148,7 +155,7 @@ export async function startInterview(
   _config?: { questionCount?: number; focusTopics?: string[] }
 ): Promise<{ session: InterviewSession; response: ApiInterviewResponse }> {
   if (isMockMode()) {
-    await delay(SIMULATED_DELAY);
+    await delay(mockLatency());
     questionIndex = 0;
   }
 
@@ -184,7 +191,7 @@ export async function sendMessage(
   request: ApiInterviewRequest
 ): Promise<ApiInterviewResponse> {
   if (isMockMode()) {
-    await delay(SIMULATED_DELAY + Math.random() * 1000);
+    await delay(mockLatency() + Math.random() * 1000);
     questionIndex++;
 
     if (questionIndex >= MOCK_QUESTIONS.length) {
@@ -238,7 +245,7 @@ export async function getInterviewFeedback(
   sessionId: string
 ): Promise<InterviewFeedback | null> {
   if (isMockMode()) {
-    await delay(SIMULATED_DELAY);
+    await delay(mockLatency());
     return MOCK_FEEDBACK;
   }
   return liveFeedbackBySession.get(sessionId) ?? null;
@@ -248,7 +255,7 @@ export async function endInterview(
   sessionId: string
 ): Promise<InterviewFeedback | null> {
   if (isMockMode()) {
-    await delay(SIMULATED_DELAY);
+    await delay(mockLatency());
     return MOCK_FEEDBACK;
   }
   return liveFeedbackBySession.get(sessionId) ?? null;

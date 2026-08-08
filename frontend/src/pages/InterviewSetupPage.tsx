@@ -1,23 +1,46 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Play, Settings2, ShieldCheck, Check, UserCheck, Layers, Clock } from "lucide-react";
+import { Play, Settings2, ShieldCheck, Check, UserCheck, Layers, Clock, ChevronDown, UserRound } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useCandidates } from "@/hooks/use-candidates";
+import { useCurriculum } from "@/hooks/use-curriculum";
 import { useInterviewStore } from "@/stores/interview.store";
-import type { InterviewSetupFormData } from "@/types";
+import type { Candidate, InterviewSetupFormData } from "@/types";
 import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface, Stack } from "@/components/layout/system";
+import { motion, AnimatePresence } from "motion/react";
+import { cn } from "@/lib/cn";
 
-const AVAILABLE_TOPICS = [
-  { name: "Vector Search & Indexing", desc: "HNSW, IVF, Cosine similarity, Quantization" },
-  { name: "RAG Architecture & HyDE", desc: "Chunking, Re-ranking, Dense/Sparse Retrieval" },
-  { name: "Multi-Agent Orchestration", desc: "State graphs, Tool calling, Supervisor patterns" },
-  { name: "MCP Protocol Integration", desc: "Model Context Protocol, Tool Registries" },
-  { name: "Production K8s & Observability", desc: "GPU scaling, Latency monitoring, Tracing" },
-];
+const DAY_TYPE_LABELS: Record<string, string> = {
+  SETUP: "Setup",
+  BUILD: "Build",
+  AI_CORE: "AI Core",
+  LEARN: "Learn",
+  SHIP_IT: "Ship It",
+  OPTIMIZE: "Optimize",
+  CAPSTONE: "Capstone",
+};
+
+function buildTopicList(
+  modules: { n: number; title: string; days: [number, number] }[],
+  days: { day: number; title: string; type: string }[]
+) {
+  return modules.map((module) => {
+    const [start, end] = module.days;
+    const moduleDays = days
+      .filter((d) => d.day >= start && d.day <= end)
+      .slice(0, 4);
+    const highlights = moduleDays
+      .map((d) => DAY_TYPE_LABELS[d.type] ?? d.type)
+      .filter((label, index, all) => all.indexOf(label) === index)
+      .join(", ");
+    const desc = `Days ${start}\u2013${end}${highlights ? ` \u00b7 ${highlights}` : ""}`;
+    return { name: module.title, desc };
+  });
+}
 
 const setupSchema = z.object({
   candidateId: z.string().min(1, "Please select a candidate"),
@@ -30,18 +53,40 @@ export function InterviewSetupPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: candidates } = useCandidates();
+  const { data: curriculum } = useCurriculum();
   const { startInterview, isLoading } = useInterviewStore();
 
   const preselectedCandidateId = (location.state as { candidateId?: string })?.candidateId;
+
+  const availableTopics = useMemo(
+    () =>
+      curriculum
+        ? buildTopicList(curriculum.modules, curriculum.days)
+        : [{ name: "Vector Search & Indexing", desc: "Loading curriculum..." }],
+    [curriculum]
+  );
 
   const [selectedCandidateId, setSelectedCandidateId] = useState<string>(
     preselectedCandidateId || candidates?.[0]?.member.id || "cand_01"
   );
 
   const [selectedTopics, setSelectedTopics] = useState<string[]>([
-    "Vector Search & Indexing",
-    "RAG Architecture & HyDE",
+    "Environment & Tooling",
+    "Data Foundations",
   ]);
+
+  const [isCandidateDropdownOpen, setIsCandidateDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsCandidateDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const {
     register,
@@ -70,6 +115,15 @@ export function InterviewSetupPage() {
     }
   }, [candidates, selectedCandidateId, setValue]);
 
+  useEffect(() => {
+    if (curriculum && curriculum.modules.length > 0) {
+      setSelectedTopics((current) => {
+        const valid = current.filter((t) => curriculum.modules.some((m) => m.title === t));
+        return valid.length > 0 ? valid : [curriculum.modules[0]!.title, curriculum.modules[1]!.title];
+      });
+    }
+  }, [curriculum]);
+
   const toggleTopic = (topicName: string) => {
     const updated = selectedTopics.includes(topicName)
       ? selectedTopics.filter((t) => t !== topicName)
@@ -77,6 +131,12 @@ export function InterviewSetupPage() {
 
     setSelectedTopics(updated);
     setValue("focusTopics", updated, { shouldValidate: true });
+  };
+
+  const handleSelectCandidate = (candidate: Candidate) => {
+    setSelectedCandidateId(candidate.member.id);
+    setValue("candidateId", candidate.member.id);
+    setIsCandidateDropdownOpen(false);
   };
 
   const onSubmit = async (_data: InterviewSetupFormData) => {
@@ -94,6 +154,7 @@ export function InterviewSetupPage() {
       <Section density="tight">
         <LayoutContainer size="form" className="stack stack-lg">
           <PageHeading
+            align="center"
             eyebrow={
               <Badge variant="gold" className="px-3 py-1 font-mono text-[11px] w-fit">
                 <Settings2 className="h-3.5 w-3.5 mr-1 text-[#D4AF37]" />
@@ -119,21 +180,73 @@ export function InterviewSetupPage() {
                     <label htmlFor="candidate-select" className="text-xs font-medium text-[#A3A3A3] block">
                       Select Cohort Candidate
                     </label>
-                    <select
-                      id="candidate-select"
-                      value={selectedCandidateId}
-                      onChange={(e) => {
-                        setSelectedCandidateId(e.target.value);
-                        setValue("candidateId", e.target.value);
-                      }}
-                      className="touch-target w-full px-4 rounded-xl bg-[#141414] border border-[#222222] text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                    >
-                      {candidates?.map((c) => (
-                        <option key={c.member.id} value={c.member.id}>
-                          {c.member.name} ({c.member.jobRole})
-                        </option>
-                      ))}
-                    </select>
+                    <div ref={dropdownRef} className="relative">
+                      <Button
+                        id="candidate-select"
+                        type="button"
+                        variant="secondary"
+                        size="chip"
+                        aria-haspopup="listbox"
+                        aria-expanded={isCandidateDropdownOpen}
+                        onClick={() => setIsCandidateDropdownOpen((open) => !open)}
+                        className="w-full justify-between gap-2 border-[#222222] bg-[#141414]"
+                        icon={<UserRound className="h-4 w-4 text-[#D4AF37]" />}
+                      >
+                        <span className="truncate text-xs text-white">
+                          {selectedCandidate
+                            ? `${selectedCandidate.member.name} (${selectedCandidate.member.jobRole})`
+                            : "Select a candidate"}
+                        </span>
+                        <motion.span
+                          animate={isCandidateDropdownOpen ? { rotate: 180 } : { rotate: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="shrink-0 text-[#737373]"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </motion.span>
+                      </Button>
+
+                      <AnimatePresence>
+                        {isCandidateDropdownOpen && (
+                          <motion.ul
+                            role="listbox"
+                            aria-label="Select cohort candidate"
+                            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute z-30 mt-2 w-full max-h-64 overflow-y-auto rounded-xl bg-[#171717] border border-[#262626] shadow-2xl shadow-black/60 p-1"
+                          >
+                            {candidates?.map((c) => {
+                              const isSelected = c.member.id === selectedCandidateId;
+                              return (
+                                <li key={c.member.id} role="none">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    role="option"
+                                    aria-selected={isSelected}
+                                    onClick={() => handleSelectCandidate(c)}
+                                    className="w-full justify-between rounded-lg px-3 h-auto py-2"
+                                  >
+                                    <span className="flex items-center gap-2.5 min-w-0">
+                                      <span className="shrink-0 h-7 w-7 rounded-lg bg-[#1D1D1D] border border-[#262626] flex items-center justify-center">
+                                        <UserRound className="h-3.5 w-3.5 text-[#D4AF37]" />
+                                      </span>
+                                      <span className="min-w-0">
+                                        <span className="block text-xs font-semibold text-white truncate">{c.member.name}</span>
+                                        <span className="block text-[10px] text-[#737373] truncate">{c.member.jobRole}</span>
+                                      </span>
+                                    </span>
+                                    {isSelected ? <Check className="h-4 w-4 text-[#D4AF37] shrink-0" /> : null}
+                                  </Button>
+                                </li>
+                              );
+                            })}
+                          </motion.ul>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </div>
 
                   {selectedCandidate ? (
@@ -186,35 +299,38 @@ export function InterviewSetupPage() {
                   ) : null}
 
                   <LayoutGrid gap="sm">
-                    {AVAILABLE_TOPICS.map((topic) => {
+                    {availableTopics.map((topic) => {
                       const isSelected = selectedTopics.includes(topic.name);
                       return (
-                        <button
+                        <Button
                           key={topic.name}
                           type="button"
+                          variant="chip"
                           aria-pressed={isSelected}
                           onClick={() => toggleTopic(topic.name)}
-                          className={`col-span-4 md:col-span-4 xl:col-span-6 text-left rounded-xl p-4 border transition-all cursor-pointer ${
+                          className={cn(
+                            "col-span-4 md:col-span-4 xl:col-span-6 text-left rounded-xl p-4 h-auto w-full justify-start items-start border",
                             isSelected
-                              ? "bg-[#141414] border-[#D4AF37]/50 text-white"
-                              : "bg-[#111111] border-[#222222] text-[#A3A3A3] hover:text-white"
-                          }`}
+                              ? "bg-[#141414] border-[#D4AF37]/50 text-white hover:bg-[#141414]"
+                              : "bg-[#111111] border-[#222222] text-[#A3A3A3] hover:text-white hover:bg-[#111111]"
+                          )}
                         >
-                          <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-start justify-between gap-3 w-full">
                             <Stack gap="xs" className="min-w-0">
                               <span className="text-xs font-bold block">{topic.name}</span>
                               <span className="text-[11px] text-[#737373] leading-relaxed">{topic.desc}</span>
                             </Stack>
                             <span
-                              className={`h-5 w-5 rounded-md flex items-center justify-center shrink-0 mt-0.5 ${
+                              className={cn(
+                                "h-5 w-5 rounded-md flex items-center justify-center shrink-0 mt-0.5",
                                 isSelected ? "bg-[#D4AF37] text-[#0A0A0A]" : "bg-[#171717] border border-[#262626]"
-                              }`}
+                              )}
                               aria-hidden="true"
                             >
                               {isSelected ? <Check className="h-3.5 w-3.5 stroke-[3]" /> : null}
                             </span>
                           </div>
-                        </button>
+                        </Button>
                       );
                     })}
                   </LayoutGrid>

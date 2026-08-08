@@ -42,15 +42,29 @@ interface SettingsState {
   useMockService: boolean;
   /** Full URL of the gateway /api/interview endpoint. */
   apiEndpoint: string;
+  /** Timeout (ms) for live gateway requests (applies in non-mock mode). */
+  requestTimeoutMs: number;
+  /** Simulated latency (ms) applied to mock-mode responses. */
+  simulatedLatencyMs: number;
   /** Persist a new configuration (called from the Settings page Save button). */
-  saveConfig: (config: { useMockService: boolean; apiEndpoint: string }) => void;
+  saveConfig: (config: {
+    useMockService: boolean;
+    apiEndpoint: string;
+    requestTimeoutMs: number;
+    simulatedLatencyMs: number;
+  }) => void;
 }
+
+export const DEFAULT_REQUEST_TIMEOUT_MS = 25000;
+export const DEFAULT_SIMULATED_LATENCY_MS = 1200;
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       useMockService: true,
       apiEndpoint: DEFAULT_API_ENDPOINT,
+      requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
+      simulatedLatencyMs: DEFAULT_SIMULATED_LATENCY_MS,
       saveConfig: (config) => set(config),
     }),
     {

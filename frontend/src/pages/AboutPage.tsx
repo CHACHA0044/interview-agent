@@ -9,8 +9,11 @@ import {
   Cpu,
   Database,
   FileChartColumn,
+  GitBranch,
   Layers,
   MessagesSquare,
+  Network,
+  Server,
   ShieldCheck,
   Sparkles,
   Terminal,
@@ -275,7 +278,7 @@ export function AboutPage() {
               </p>
             </div>
 
-            <div className="flex flex-col xl:flex-row xl:items-stretch gap-4 xl:gap-0">
+            <div className="flex flex-col xl:flex-row xl:items-start gap-4 xl:gap-0">
               {FLOW_STEPS.map((step, index) => (
                 <Fragment key={step.title}>
                   {index > 0 && <FlowConnector />}
@@ -311,6 +314,69 @@ export function AboutPage() {
                 </h3>
                 <p className="text-[#A3A3A3] leading-relaxed text-sm transition-colors duration-300 group-hover:text-[#B8B8B8]">
                   Powered by Zustand for global interview state and TanStack Query for async mock request orchestration.
+                </p>
+              </div>
+            </LayoutGrid>
+          </Surface>
+        </LayoutContainer>
+      </Section>
+
+      <Section>
+        <LayoutContainer size="reading">
+          <Surface padding="lg" className="stack stack-md overflow-hidden">
+            <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
+              <Server className="h-5 w-5 text-[#D4AF37]" />
+              <h2 className="text-lg font-bold text-white">Backend Foundation Specs</h2>
+            </div>
+
+            <p className="text-sm text-[#A3A3A3] leading-relaxed">
+              The backend is a three-service microservice architecture speaking HTTP/REST, with Redis for ephemeral
+              session state and Qdrant for curriculum retrieval — both reachable only inside the private network. The
+              only service exposed to the frontend is the Gateway.
+            </p>
+
+            <LayoutGrid gap="md">
+              <div className="group col-span-4 md:col-span-4 xl:col-span-6 stack stack-sm rounded-xl border border-[#1F1F1F] bg-[#131313] p-5 transition-all duration-300 hover:border-[#D4AF37]/30 hover:bg-[#161616]">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <Network className="h-4 w-4 text-[#D4AF37]" /> Service Topology
+                </h3>
+                <p className="text-[#A3A3A3] leading-relaxed text-sm transition-colors duration-300 group-hover:text-[#B8B8B8]">
+                  interview-gateway (:8000) exposes the public POST /api/interview contract; interview-agent (:8001)
+                  owns candidate context, planning, and adaptive question strategy; ai-intelligence (:8002) owns LLM
+                  abstraction, RAG retrieval, evaluation, and feedback synthesis.
+                </p>
+              </div>
+
+              <div className="group col-span-4 md:col-span-4 xl:col-span-6 stack stack-sm rounded-xl border border-[#1F1F1F] bg-[#131313] p-5 transition-all duration-300 hover:border-[#D4AF37]/30 hover:bg-[#161616]">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <Database className="h-4 w-4 text-[#D4AF37]" /> Session & Retrieval Stores
+                </h3>
+                <p className="text-[#A3A3A3] leading-relaxed text-sm transition-colors duration-300 group-hover:text-[#B8B8B8]">
+                  Redis holds TTL-backed ephemeral session documents (agent state, conversation, scores) so stateless
+                  agent/AI services can scale freely. Qdrant indexes all 31 curriculum days as chunks for semantic,
+                  curriculum-grounded retrieval during question generation and evaluation.
+                </p>
+              </div>
+
+              <div className="group col-span-4 md:col-span-4 xl:col-span-6 stack stack-sm rounded-xl border border-[#1F1F1F] bg-[#131313] p-5 transition-all duration-300 hover:border-[#D4AF37]/30 hover:bg-[#161616]">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-[#D4AF37]" /> Reliability & Guardrails
+                </h3>
+                <p className="text-[#A3A3A3] leading-relaxed text-sm transition-colors duration-300 group-hover:text-[#B8B8B8]">
+                  Bounded timeouts and retries, health endpoints on every service, deterministic heuristic fallbacks
+                  when the LLM provider fails, and hard floors of at least 8 questions across 4 distinct curriculum
+                  days — the interview never completes early.
+                </p>
+              </div>
+
+              <div className="group col-span-4 md:col-span-4 xl:col-span-6 stack stack-sm rounded-xl border border-[#1F1F1F] bg-[#131313] p-5 transition-all duration-300 hover:border-[#D4AF37]/30 hover:bg-[#161616]">
+                <h3 className="font-semibold text-white flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-[#D4AF37]" /> Ownership & Delivery
+                </h3>
+                <p className="text-[#A3A3A3] leading-relaxed text-sm transition-colors duration-300 group-hover:text-[#B8B8B8]">
+                  Each service is independently deployable with its own Dockerfile, environment, and tests — so Pranav,
+                  Shezan, and Meraj work in parallel without touching the same files. Shared contracts live in a
+                  stable, code-free shared/ directory.
                 </p>
               </div>
             </LayoutGrid>

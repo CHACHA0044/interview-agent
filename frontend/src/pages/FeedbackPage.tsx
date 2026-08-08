@@ -13,20 +13,46 @@ import {
 import { Badge, Progress, Button } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useInterviewStore } from "@/stores/interview.store";
-import { MOCK_FEEDBACK } from "@/mock";
 import type { InterviewFeedback } from "@/types";
 import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface, Stack, Cluster } from "@/components/layout/system";
 
 export function FeedbackPage() {
   const navigate = useNavigate();
   const { feedback: storeFeedback } = useInterviewStore();
-  const [feedback, setFeedback] = useState<InterviewFeedback>(storeFeedback || MOCK_FEEDBACK);
+  const [feedback, setFeedback] = useState<InterviewFeedback | null>(storeFeedback);
 
   useEffect(() => {
     if (storeFeedback) {
       setFeedback(storeFeedback);
     }
   }, [storeFeedback]);
+
+  if (!feedback) {
+    return (
+      <PageTransition>
+        <Section density="tight">
+          <LayoutContainer size="form" className="stack stack-lg">
+            <PageHeading
+              align="center"
+              eyebrow={
+                <Badge variant="gold" className="px-3 py-1 font-mono text-[11px] w-fit">
+                  <Sparkles className="h-3.5 w-3.5 mr-1 text-[#D4AF37]" />
+                  No Report Available
+                </Badge>
+              }
+              title="No Completed Assessment Found"
+              description="Complete an interview to generate a performance evaluation report. Start a new assessment to see results here."
+              actions={
+                <Button onClick={() => navigate("/candidates")} icon={<ArrowRight className="h-4 w-4" />}>
+                  Select Candidate
+                </Button>
+              }
+            />
+          </LayoutContainer>
+        </Section>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>

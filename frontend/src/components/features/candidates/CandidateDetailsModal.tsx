@@ -41,7 +41,7 @@ import {
   XCircle,
   SkipForward,
 } from "lucide-react";
-import { Badge, Progress } from "@/components/ui";
+import { Badge, Progress, Button } from "@/components/ui";
 import { cn } from "@/lib/cn";
 import type { Candidate, Mission } from "@/types";
 
@@ -137,14 +137,15 @@ export function CandidateDetailsModal({ candidate, onClose }: CandidateDetailsMo
                 <p className="text-sm text-[#A3A3A3]">{candidate.member.jobRole}</p>
               </div>
 
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                iconOnly
                 onClick={onClose}
                 aria-label="Close candidate details"
-                className="shrink-0 h-9 w-9 rounded-xl bg-[#171717] border border-[#262626] text-[#A3A3A3] hover:text-white hover:border-[#D4AF37]/50 transition-colors flex items-center justify-center cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
+                className="shrink-0 border-[#262626] text-[#A3A3A3] hover:text-white hover:border-[#D4AF37]/50"
+                icon={<X className="h-4 w-4" />}
+              />
             </div>
 
             <div className="p-7 stack stack-md">
