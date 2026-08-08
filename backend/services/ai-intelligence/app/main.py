@@ -1,58 +1,36 @@
-"""Temporary placeholder for the ai-intelligence service.
+"""
+Purpose:
+Entry point for the AI Intelligence FastAPI application.
 
-TODO — REPLACE WITH MERAJ'S IMPLEMENTATION
+Responsibilities:
+- Initializes the FastAPI app.
+- Registers routers.
+- Handles global application state and middleware.
 
-This stub exists only so `docker compose up --build` works while the real
-service is under development. It starts, exposes GET /health, and answers
-POST /internal/* with a clearly marked stub body. It contains NO LLM code,
-RAG, embeddings, evaluation, or feedback logic.
+Connected Files:
+- app/api/endpoints.py
+- app/core/config.py
 """
 
-import json
-import os
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-SERVICE = "ai-intelligence"
-STUB_NOTE = "TODO - REPLACE WITH MERAJ'S IMPLEMENTATION"
+from app.api.endpoints import router as internal_ai_router
 
+app = FastAPI(
+    title="AI Intelligence Service",
+    description="Internal AI service for the Interview Agent.",
+    version="1.0.0"
+)
 
-class StubHandler(BaseHTTPRequestHandler):
-    def _send(self, status: int, body: dict) -> None:
-        data = json.dumps(body).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+# Standard internal microservice CORS policy
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    def do_GET(self) -> None:
-        if self.path == "/health":
-            return self._send(
-                200, {"status": "ok", "service": SERVICE, "stub": True}
-            )
-        self._send(
-            404,
-            {"error": {"code": "NOT_FOUND", "message": "not found", "detail": {}}},
-        )
-
-    def do_POST(self) -> None:
-        length = int(self.headers.get("Content-Length") or 0)
-        self.rfile.read(length)
-        self._send(
-            200,
-            {
-                "stub": True,
-                "service": SERVICE,
-                "note": STUB_NOTE,
-                "context": [],
-                "source": "fallback",
-            },
-        )
-
-    def log_message(self, *args) -> None:
-        pass
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("BACKEND_PORT", "8002"))
-    ThreadingHTTPServer(("0.0.0.0", port), StubHandler).serve_forever()
+# Mount the internal API routes
+app.include_router(internal_ai_router)

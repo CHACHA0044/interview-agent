@@ -15,8 +15,8 @@
 # with no real API keys. Override LLM_API_KEY / LLM_BASE_URL / etc.
 # via the root .env file.
 #
-# interview-agent and ai-intelligence are MINIMAL temporary
-# placeholders until Shezan's and Meraj's services land.
+# curriculum.json is mounted read-only into interview-agent and
+# ai-intelligence (CURRICULUM_PATH=/app/curriculum.json in both images).
 # ================================================================
 
 services:
@@ -69,6 +69,8 @@ services:
     depends_on:
       ai-intelligence:
         condition: service_healthy
+    volumes:
+      - ../curriculum.json:/app/curriculum.json:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
       interval: 10s
@@ -99,6 +101,8 @@ services:
     depends_on:
       qdrant:
         condition: service_healthy
+    volumes:
+      - ../curriculum.json:/app/curriculum.json:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
       interval: 10s

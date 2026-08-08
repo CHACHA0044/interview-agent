@@ -2,8 +2,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY app ./app
+
+# curriculum.json is mounted at runtime and CURRICULUM_PATH points the loader at it.
+ENV CURRICULUM_PATH=/app/curriculum.json
 
 EXPOSE 8001
 
-CMD ["python", "app/main.py"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]

@@ -1,65 +1,59 @@
-"""Temporary placeholder for the interview-agent service.
+"""
+Purpose:
+FastAPI application entry point for the Interview Agent.
 
-TODO — REPLACE WITH SHEZAN'S IMPLEMENTATION
+Responsibilities:
+- Initializes FastAPI.
+- Injects the CurriculumLoader, AIIntelligenceClient, and InterviewOrchestrator
+  into app state.
+- Mounts the internal API router.
 
-This stub exists only so `docker compose up --build` works while the real
-service is under development. It starts, exposes GET /health, and answers
-POST /internal/* with a clearly marked stub body. It contains NO interview
-logic, curriculum planning, or strategy.
+Connected Files:
+- app/api/router.py
+- app/core/config.py
+- app/services/curriculum_loader.py
+- app/services/ai_client.py
+- app/services/orchestrator.py
 """
 
-import json
-import os
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from contextlib import asynccontextmanager
 
-SERVICE = "interview-agent"
-STUB_NOTE = "TODO - REPLACE WITH SHEZAN'S IMPLEMENTATION"
+from fastapi import FastAPI
 
-
-class StubHandler(BaseHTTPRequestHandler):
-    def _send(self, status: int, body: dict) -> None:
-        data = json.dumps(body).encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
-
-    def do_GET(self) -> None:
-        if self.path == "/health":
-            return self._send(
-                200, {"status": "ok", "service": SERVICE, "stub": True}
-            )
-        self._send(
-            404,
-            {"error": {"code": "NOT_FOUND", "message": "not found", "detail": {}}},
-        )
-
-    def do_POST(self) -> None:
-        length = int(self.headers.get("Content-Length") or 0)
-        self.rfile.read(length)
-        self._send(
-            200,
-            {
-                "stub": True,
-                "service": SERVICE,
-                "note": STUB_NOTE,
-                "reply": "STUB: interview-agent not implemented yet.",
-                "done": False,
-                "agentState": {},
-                "sessionView": {
-                    "questionCount": 0,
-                    "daysAsked": [],
-                    "scores": [],
-                    "status": "active",
-                },
-            },
-        )
-
-    def log_message(self, *args) -> None:
-        pass
+from app.api.router import router
+from app.core.config import settings
+from app.services.ai_client import AIIntelligenceClient
+from app.services.curriculum_loader import CurriculumLoader
+from app.services.orchestrator import InterviewOrchestrator
 
 
-if __name__ == "__main__":
-    port = int(os.environ.get("BACKEND_PORT", "8001"))
-    ThreadingHTTPServer(("0.0.0.0", port), StubHandler).serve_forever()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    loader = CurriculumLoader()
+    ai_client = AIIntelligenceClient(
+        base_url=settings.ai_service_url,
+        timeout_seconds=settings.ai_timeout_seconds,
+        retries=settings.ai_retries,
+    )
+    app.state.orchestrator = InterviewOrchestrator(
+        loader,
+        ai_client,
+        followup_budget=settings.followup_budget,
+        followup_max_per_question=settings.followup_max_per_question,
+    )
+    yield
+
+
+app = FastAPI(
+    title="Interview Agent Internal API",
+    description="Stateless orchestration layer for interview planning and progression.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.include_router(router, prefix="/internal/interview", tags=["Interview"])
+
+
+@app.get("/health", tags=["Health"])
+async def root_health():
+    return {"status": "ok", "service": "interview-agent"}
