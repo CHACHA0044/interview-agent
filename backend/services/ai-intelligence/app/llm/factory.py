@@ -16,8 +16,9 @@ Connected Files:
 
 from app.core.config import settings
 from app.llm.fake_provider import FakeLLMProvider
-from app.llm.provider import ChatProvider
+from app.llm.groq_provider import GroqProvider
 from app.llm.openai_provider import OpenAICompatibleProvider
+from app.llm.provider import ChatProvider
 
 
 def get_llm_provider() -> ChatProvider:
@@ -32,7 +33,17 @@ def get_llm_provider() -> ChatProvider:
     """
     provider_type = settings.llm_provider.lower()
 
-    if provider_type == "openai":
+    if provider_type == "groq":
+        api_key = settings.groq_api_key or settings.llm_api_key
+        if not api_key:
+            raise ValueError("GROQ_API_KEY or LLM_API_KEY environment variable is required for Groq provider.")
+
+        return GroqProvider(
+            api_key=api_key,
+            model=settings.groq_model or "llama-3.3-70b-versatile",
+            fallback_model=settings.groq_fallback_model or "llama-3.1-8b-instant",
+        )
+    elif provider_type == "openai":
         if not settings.llm_api_key:
             raise ValueError("LLM_API_KEY environment variable is required for OpenAI provider.")
 
@@ -45,3 +56,4 @@ def get_llm_provider() -> ChatProvider:
         return FakeLLMProvider(model=settings.llm_model)
     else:
         raise ValueError(f"Unknown LLM provider type configured: {provider_type}")
+

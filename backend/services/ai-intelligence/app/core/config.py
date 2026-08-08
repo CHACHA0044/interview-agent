@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     llm_base_url: Optional[str] = None
     llm_temperature: float = 0.3
 
+    # Groq Provider Configuration
+    groq_api_key: Optional[str] = None
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_fallback_model: str = "llama-3.1-8b-instant"
+
     # Qdrant Configuration
     qdrant_url: str = "http://localhost:6333"
     qdrant_api_key: Optional[str] = None

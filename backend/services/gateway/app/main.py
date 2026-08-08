@@ -24,7 +24,10 @@ logger = logging.getLogger(__name__)
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
 
-    logging.basicConfig(level=settings.log_level.upper())
+    level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    if not isinstance(level, int):
+        level = logging.INFO
+    logging.basicConfig(level=level)
 
     app = FastAPI(title="Interview Agent Gateway", version="1.0.0")
     app.state.settings = settings
