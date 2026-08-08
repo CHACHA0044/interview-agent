@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://interview-agent.local/schemas/agent_api.json",
+  "title": "Interview Agent Internal API",
+  "description": "Gateway → Interview Agent contract. See backend/backend.md §8.1. The Gateway is the only caller of the Interview Agent. The Agent is a stateless decision engine: all interview reasoning is carried in agentState, supplied by the Gateway on every call and returned (possibly updated) in the response. This file defines DATA CONTRACTS only — no LLM, curriculum, or strategy rules. COMPLETION OWNERSHIP: the Interview Agent owns interview completion logic; an interview must not complete before satisfying the hackathon minimum of 8 questions across at least 4 distinct curriculum days. The Gateway must not enforce these floors — it only stores/transports state and forwards the Agent's done flag. This schema therefore imposes no question-count/day-count minimums or maximums.",
+  "type": "object",
+  "endpoints": {
+    "POST /internal/interview/start": {
+      "request": "#/$defs/agentStartRequest",
+      "response": "#/$defs/agentStartResponse"
+    },
+    "POST /internal/interview/next": {
+      "request": "#/$defs/agentNextRequest",
+      "response": "#/$defs/agentNextResponse"
+    },
+    "POST /internal/interview/follow-up": {
+      "request": "#/$defs/agentFollowUpRequest",
+      "response": "#/$defs/agentFollowUpResponse",
+      "note": "Same shape as next. Only used for explicit follow-ups; the Agent may instead fold follow-ups into next."
+    },
+    "POST /internal/interview/complete": {
+      "request": "#/$defs/agentCompleteRequest",
+      "response": "#/$defs/agentCompleteResponse"
+    },
+    "GET /health": {
+      "request": null,
+      "response": "#/$defs/healthResponse"
+    }
+  },
+  "$defs": {
+    "candidate": {
+      "title": "Candidate",
+      "description": "Candidate payload matching candidates.json, carried verbatim from the public request.",
+      "type": "object",
+      "required": ["member", "missions"],
+      "properties": {
+        "member": { "$ref": "#/$defs/candidateMember" },
+        "missions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidateMission" }
+        },
+        "signals": {
+          "oneOf": [
+            { "$ref": "#/$defs/candidateSignals" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "candidateMember": {
+      "title": "CandidateMember",
+      "type": "object",
+      "required": ["id", "name", "jobRole"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "jobRole": { "type": "string" },
+        "yearsExperience": { "type": ["integer", "null"] },
+        "education": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "candidateMission": {
+      "title": "CandidateMission",
+      "type": "object",
+      "required": ["day", "title"],
+      "properties": {
+        "day": { "type": "integer" },
+        "title": { "type": "string" },
+        "passed": { "type": ["boolean", "null"] },
+        "attempts": { "type": ["integer", "null"] },
+        "skipped": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "candidateSignals": {
+      "title": "CandidateSignals",
+      "type": "object",
+      "properties": {
+        "commitDays": { "type": ["integer", "null"] },
+        "missionsCompleted": { "type": ["integer", "null"] },
+        "missionsFirstTry": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "conversationItem": {
+      "title": "ConversationItem",
+      "type": "object",
+      "required": ["role", "content"],
+      "properties": {
+        "role": {
+          "enum": ["agent", "candidate"]
+        },
+        "content": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "question": {
+      "title": "QuestionMetadata",
+      "description": "Metadata for the question currently on the floor.",
+      "type": "object",
+      "required": ["questionId", "type", "difficulty", "topic", "day"],
+      "properties": {
+        "questionId": { "type": "string" },
+        "type": { "type": "string" },
+        "difficulty": {
+          "enum": ["easy", "medium", "hard"]
+        },
+        "topic": { "type": "string" },
+        "day": { "type": "integer" },
+        "followUpOf": { "type": ["string", "null"] },
+        "expectedConcepts": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "agentState": {
+      "title": "AgentState",
+      "description": "Opaque interview reasoning state owned by the Interview Agent. The Gateway stores and returns this blob verbatim; it MUST NOT interpret it.",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "sessionView": {
+      "title": "SessionView",
+      "description": "Safe, Gateway-visible interview counters the Gateway copies into the session document for telemetry/tests.",
+      "type": "object",
+      "required": ["questionCount", "daysAsked", "scores", "status"],
+      "properties": {
+        "questionCount": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "No maximum. The Interview Agent decides when the interview ends (never before its floors: ≥ 8 questions across ≥ 4 distinct curriculum days). The Gateway records this value verbatim and must not enforce any limit."
+        },
+        "daysAsked": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "uniqueItems": true
+        },
+        "scores": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "status": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "feedback": {
+      "title": "Feedback",
+      "type": "object",
+      "required": ["summary", "strengths", "gaps", "next"],
+      "properties": {
+        "summary": { "type": "string" },
+        "strengths": { "type": "array", "items": { "type": "string" } },
+        "gaps": { "type": "array", "items": { "type": "string" } },
+        "next": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "errorBody": {
+      "title": "ErrorBody",
+      "description": "Structured error for non-2xx internal responses (backend/backend.md §16.4).",
+      "type": "object",
+      "required": ["error"],
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" },
+            "detail": { "type": "object", "additionalProperties": true }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "agentStartRequest": {
+      "title": "AgentStartRequest",
+      "type": "object",
+      "required": ["sessionId", "candidate"],
+      "properties": {
+        "sessionId": { "type": "string", "minLength": 1 },
+        "candidate": { "$ref": "#/$defs/candidate" }
+      },
+      "additionalProperties": true
+    },
+    "agentStartResponse": {
+      "title": "AgentStartResponse",
+      "type": "object",
+      "required": ["agentState", "sessionView", "reply", "done"],
+      "properties": {
+        "agentState": { "$ref": "#/$defs/agentState" },
+        "sessionView": { "$ref": "#/$defs/sessionView" },
+        "reply": { "type": "string" },
+        "done": {
+          "type": "boolean",
+          "description": "The Interview Agent's decision. The Agent owns completion logic (must not become true before ≥ 8 questions across ≥ 4 distinct curriculum days). The Gateway forwards this flag verbatim without interpreting it."
+        },
+        "question": {
+          "oneOf": [
+            { "$ref": "#/$defs/question" },
+            { "type": "null" }
+          ]
+        },
+        "feedback": {
+          "oneOf": [
+            { "$ref": "#/$defs/feedback" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "agentNextRequest": {
+      "title": "AgentNextRequest",
+      "type": "object",
+      "required": ["sessionId", "candidate", "agentState", "conversation", "message"],
+      "properties": {
+        "sessionId": { "type": "string", "minLength": 1 },
+        "candidate": { "$ref": "#/$defs/candidate" },
+        "agentState": { "$ref": "#/$defs/agentState" },
+        "conversation": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/conversationItem" }
+        },
+        "currentQuestion": {
+          "oneOf": [
+            { "$ref": "#/$defs/question" },
+            { "type": "null" }
+          ]
+        },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "agentNextResponse": {
+      "title": "AgentNextResponse",
+      "type": "object",
+      "required": ["agentState", "sessionView", "reply", "done"],
+      "properties": {
+        "agentState": { "$ref": "#/$defs/agentState" },
+        "sessionView": { "$ref": "#/$defs/sessionView" },
+        "reply": { "type": "string" },
+        "done": {
+          "type": "boolean",
+          "description": "The Interview Agent's decision. The Agent owns completion logic (must not become true before ≥ 8 questions across ≥ 4 distinct curriculum days). The Gateway forwards this flag verbatim without interpreting it."
+        },
+        "question": {
+          "oneOf": [
+            { "$ref": "#/$defs/question" },
+            { "type": "null" }
+          ]
+        },
+        "feedback": {
+          "oneOf": [
+            { "$ref": "#/$defs/feedback" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "agentFollowUpRequest": {
+      "title": "AgentFollowUpRequest",
+      "description": "Identical shape to agentNextRequest. Carries the previous answer inside conversation and/or message.",
+      "$ref": "#/$defs/agentNextRequest"
+    },
+    "agentFollowUpResponse": {
+      "title": "AgentFollowUpResponse",
+      "description": "Identical shape to agentNextResponse.",
+      "$ref": "#/$defs/agentNextResponse"
+    },
+    "agentCompleteRequest": {
+      "title": "AgentCompleteRequest",
+      "type": "object",
+      "required": ["sessionId", "agentState"],
+      "properties": {
+        "sessionId": { "type": "string", "minLength": 1 },
+        "agentState": { "$ref": "#/$defs/agentState" }
+      },
+      "additionalProperties": true
+    },
+    "agentCompleteResponse": {
+      "title": "AgentCompleteResponse",
+      "type": "object",
+      "required": ["agentState", "sessionView", "reply", "done", "feedback"],
+      "properties": {
+        "agentState": { "$ref": "#/$defs/agentState" },
+        "sessionView": { "$ref": "#/$defs/sessionView" },
+        "reply": { "type": "string" },
+        "done": {
+          "const": true,
+          "description": "Must be true: completion responses always end the interview."
+        },
+        "feedback": { "$ref": "#/$defs/feedback" }
+      },
+      "additionalProperties": true
+    },
+    "healthResponse": {
+      "title": "HealthResponse",
+      "type": "object",
+      "required": ["status", "service"],
+      "properties": {
+        "status": { "enum": ["ok", "error"] },
+        "service": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

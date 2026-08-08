@@ -1,0 +1,480 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://interview-agent.local/schemas/ai_api.json",
+  "title": "AI Intelligence Internal API",
+  "description": "Interview Agent → AI Intelligence contract. See backend/backend.md §8.2. The Interview Agent is the only caller of AI Intelligence (the Gateway may call /health and the feedback-recovery hook). This file defines DATA CONTRACTS only: it does not prescribe prompt content, scoring math, RAG internals, or provider behavior. Response structures must remain deterministic even when the AI service degrades to fallback modes.",
+  "type": "object",
+  "endpoints": {
+    "POST /internal/ai/generate-question": {
+      "request": "#/$defs/generateQuestionRequest",
+      "response": "#/$defs/generateQuestionResponse"
+    },
+    "POST /internal/ai/generate-followup": {
+      "request": "#/$defs/generateFollowupRequest",
+      "response": "#/$defs/generateFollowupResponse"
+    },
+    "POST /internal/ai/evaluate-answer": {
+      "request": "#/$defs/evaluateAnswerRequest",
+      "response": "#/$defs/evaluateAnswerResponse"
+    },
+    "POST /internal/ai/generate-feedback": {
+      "request": "#/$defs/generateFeedbackRequest",
+      "response": "#/$defs/generateFeedbackResponse"
+    },
+    "POST /internal/ai/retrieve-context": {
+      "request": "#/$defs/retrieveContextRequest",
+      "response": "#/$defs/retrieveContextResponse"
+    },
+    "GET /health": {
+      "request": null,
+      "response": "#/$defs/healthResponse"
+    }
+  },
+  "$defs": {
+    "conversationItem": {
+      "title": "ConversationItem",
+      "type": "object",
+      "required": ["role", "content"],
+      "properties": {
+        "role": { "enum": ["agent", "candidate"] },
+        "content": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "candidateContext": {
+      "title": "CandidateContext",
+      "description": "Candidate-facing summary computed by the Interview Agent from the candidate payload and curriculum history.",
+      "type": "object",
+      "required": ["candidateId", "name", "role", "tier"],
+      "properties": {
+        "candidateId": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "tier": {
+          "enum": ["expert", "strong", "developing", "novice"]
+        },
+        "strongDays": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "weakDays": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "failedDays": {
+          "type": "array",
+          "items": { "type": "integer" }
+        },
+        "skippedDays": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "module": {
+      "title": "Module",
+      "type": "object",
+      "required": ["n", "title", "days"],
+      "properties": {
+        "n": { "type": "integer" },
+        "title": { "type": "string" },
+        "days": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "dayInfo": {
+      "title": "DayInfo",
+      "description": "A single curriculum day entry (from curriculum.json).",
+      "type": "object",
+      "required": ["day", "title", "type"],
+      "properties": {
+        "day": { "type": "integer" },
+        "title": { "type": "string" },
+        "type": { "type": "string" },
+        "tools": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "objectives": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "curriculumContext": {
+      "title": "CurriculumContext",
+      "description": "Curriculum snapshot supplied by the Interview Agent: module index, full days map, and the agent's planned days.",
+      "type": "object",
+      "required": ["modules", "days", "plannedDays"],
+      "properties": {
+        "modules": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/module" }
+        },
+        "days": {
+          "type": "object",
+          "description": "Map keyed by day number (string keys) to day info.",
+          "additionalProperties": { "$ref": "#/$defs/dayInfo" }
+        },
+        "plannedDays": {
+          "type": "array",
+          "items": { "type": "integer" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "questionStrategy": {
+      "title": "QuestionStrategy",
+      "description": "Deterministic strategy emitted by the Interview Agent. AI Intelligence turns this into natural-language question text.",
+      "type": "object",
+      "required": ["day", "module", "topic", "difficulty", "concepts", "isFollowUp"],
+      "properties": {
+        "day": { "type": "integer" },
+        "module": { "type": "integer" },
+        "topic": { "type": "string" },
+        "difficulty": {
+          "enum": ["easy", "medium", "hard"]
+        },
+        "concepts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "isFollowUp": { "type": "boolean" },
+        "followUpOf": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "followUpStrategy": {
+      "title": "FollowUpStrategy",
+      "description": "Strategy for a follow-up question anchored on the candidate's previous answer.",
+      "type": "object",
+      "required": ["day", "difficulty", "previousAnswer", "weakConcepts", "questionStrategy"],
+      "properties": {
+        "day": { "type": "integer" },
+        "difficulty": {
+          "enum": ["easy", "medium", "hard"]
+        },
+        "previousAnswer": { "type": "string" },
+        "weakConcepts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "questionStrategy": { "$ref": "#/$defs/questionStrategy" }
+      },
+      "additionalProperties": true
+    },
+    "retrievedChunk": {
+      "title": "RetrievedChunk",
+      "description": "A curriculum chunk returned by retrieval. Objectives/tools may be empty in degraded fallback.",
+      "type": "object",
+      "required": ["day", "title"],
+      "properties": {
+        "day": { "type": "integer" },
+        "title": { "type": "string" },
+        "objectives": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tools": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "score": { "type": ["number", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "question": {
+      "title": "GeneratedQuestion",
+      "description": "A generated question in natural language plus its metadata and the retrieved grounding context.",
+      "type": "object",
+      "required": ["question", "type", "difficulty", "topic", "day", "expectedConcepts"],
+      "properties": {
+        "question": { "type": "string" },
+        "type": { "type": "string" },
+        "difficulty": {
+          "enum": ["easy", "medium", "hard"]
+        },
+        "topic": { "type": "string" },
+        "day": { "type": "integer" },
+        "expectedConcepts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "retrievedContext": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/retrievedChunk" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "evaluation": {
+      "title": "Evaluation",
+      "description": "Deterministic evaluation output. The structure is identical for LLM-backed and heuristic paths.",
+      "type": "object",
+      "required": [
+        "score",
+        "conceptCoverage",
+        "technicalAccuracy",
+        "depth",
+        "strengths",
+        "gaps",
+        "followUpRequired"
+      ],
+      "properties": {
+        "score": { "type": "number", "minimum": 0, "maximum": 10 },
+        "conceptCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "technicalAccuracy": { "type": "number", "minimum": 0, "maximum": 1 },
+        "depth": { "type": "number", "minimum": 0, "maximum": 1 },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "gaps": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "followUpRequired": { "type": "boolean" },
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "evaluationRef": {
+      "title": "EvaluationRef",
+      "description": "Compact per-question evaluation used as input to feedback generation.",
+      "type": "object",
+      "required": ["questionId", "score", "day"],
+      "properties": {
+        "questionId": { "type": "string" },
+        "score": { "type": "number" },
+        "day": { "type": "integer" },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "gaps": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "feedback": {
+      "title": "Feedback",
+      "description": "Final feedback — matches the public contract fields from technical-spec.md.",
+      "type": "object",
+      "required": ["summary", "strengths", "gaps", "next"],
+      "properties": {
+        "summary": { "type": "string" },
+        "strengths": { "type": "array", "items": { "type": "string" } },
+        "gaps": { "type": "array", "items": { "type": "string" } },
+        "next": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "topicScore": {
+      "title": "TopicScore",
+      "type": "object",
+      "required": ["module", "topic", "score", "maxScore"],
+      "properties": {
+        "module": { "type": "integer" },
+        "topic": { "type": "string" },
+        "score": { "type": "number" },
+        "maxScore": { "type": "number" },
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "coverage": {
+      "title": "Coverage",
+      "description": "Map of curriculum day → assessed coverage fraction (0..1).",
+      "type": "object",
+      "additionalProperties": { "type": "number" }
+    },
+    "missedConcepts": {
+      "title": "MissedConcepts",
+      "description": "Map of curriculum day → concepts missed by the candidate.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "candidate": {
+      "title": "Candidate",
+      "description": "Full candidate payload matching candidates.json (needed by feedback generation).",
+      "type": "object",
+      "required": ["member", "missions"],
+      "properties": {
+        "member": {
+          "type": "object",
+          "required": ["id", "name", "jobRole"],
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "jobRole": { "type": "string" },
+            "yearsExperience": { "type": ["integer", "null"] },
+            "education": { "type": ["string", "null"] },
+            "status": { "type": ["string", "null"] }
+          },
+          "additionalProperties": true
+        },
+        "missions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["day", "title"],
+            "properties": {
+              "day": { "type": "integer" },
+              "title": { "type": "string" },
+              "passed": { "type": ["boolean", "null"] },
+              "attempts": { "type": ["integer", "null"] },
+              "skipped": { "type": ["boolean", "null"] }
+            },
+            "additionalProperties": true
+          }
+        },
+        "signals": { "type": ["object", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "generateQuestionRequest": {
+      "title": "GenerateQuestionRequest",
+      "type": "object",
+      "required": ["candidateContext", "curriculumContext", "conversation", "questionStrategy"],
+      "properties": {
+        "candidateContext": { "$ref": "#/$defs/candidateContext" },
+        "curriculumContext": { "$ref": "#/$defs/curriculumContext" },
+        "conversation": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/conversationItem" }
+        },
+        "questionStrategy": { "$ref": "#/$defs/questionStrategy" },
+        "retrievalQuery": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "generateQuestionResponse": {
+      "title": "GenerateQuestionResponse",
+      "$ref": "#/$defs/question"
+    },
+    "generateFollowupRequest": {
+      "title": "GenerateFollowupRequest",
+      "type": "object",
+      "required": ["candidateContext", "curriculumContext", "conversation", "followUpStrategy"],
+      "properties": {
+        "candidateContext": { "$ref": "#/$defs/candidateContext" },
+        "curriculumContext": { "$ref": "#/$defs/curriculumContext" },
+        "conversation": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/conversationItem" }
+        },
+        "followUpStrategy": { "$ref": "#/$defs/followUpStrategy" }
+      },
+      "additionalProperties": true
+    },
+    "generateFollowupResponse": {
+      "title": "GenerateFollowupResponse",
+      "$ref": "#/$defs/question"
+    },
+    "evaluateAnswerRequest": {
+      "title": "EvaluateAnswerRequest",
+      "type": "object",
+      "required": ["question", "candidateContext", "candidateAnswer"],
+      "properties": {
+        "question": { "$ref": "#/$defs/question" },
+        "candidateContext": { "$ref": "#/$defs/candidateContext" },
+        "retrievedContext": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/retrievedChunk" }
+        },
+        "candidateAnswer": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "evaluateAnswerResponse": {
+      "title": "EvaluateAnswerResponse",
+      "$ref": "#/$defs/evaluation"
+    },
+    "generateFeedbackRequest": {
+      "title": "GenerateFeedbackRequest",
+      "type": "object",
+      "required": [
+        "candidate",
+        "candidateContext",
+        "evaluations",
+        "coverage",
+        "missedConcepts",
+        "topicScores"
+      ],
+      "properties": {
+        "candidate": { "$ref": "#/$defs/candidate" },
+        "candidateContext": { "$ref": "#/$defs/candidateContext" },
+        "evaluations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/evaluationRef" }
+        },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "missedConcepts": { "$ref": "#/$defs/missedConcepts" },
+        "topicScores": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/topicScore" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "generateFeedbackResponse": {
+      "title": "GenerateFeedbackResponse",
+      "$ref": "#/$defs/feedback"
+    },
+    "retrieveContextRequest": {
+      "title": "RetrieveContextRequest",
+      "type": "object",
+      "required": ["query"],
+      "properties": {
+        "query": { "type": "string" },
+        "day": { "type": ["integer", "null"] },
+        "module": { "type": ["integer", "null"] },
+        "topic": { "type": ["string", "null"] },
+        "candidateContext": {
+          "oneOf": [
+            { "$ref": "#/$defs/candidateContext" },
+            { "type": "null" }
+          ]
+        },
+        "topK": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "retrieveContextResponse": {
+      "title": "RetrieveContextResponse",
+      "type": "object",
+      "required": ["context", "source"],
+      "properties": {
+        "context": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/retrievedChunk" }
+        },
+        "source": {
+          "enum": ["qdrant", "fallback"],
+          "description": "qdrant for vector retrieval; fallback when Qdrant is unavailable (backend/backend.md §16.2)."
+        }
+      },
+      "additionalProperties": true
+    },
+    "healthResponse": {
+      "title": "HealthResponse",
+      "type": "object",
+      "required": ["status", "service"],
+      "properties": {
+        "status": { "enum": ["ok", "error"] },
+        "service": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

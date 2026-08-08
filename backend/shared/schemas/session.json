@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://interview-agent.local/schemas/session.json",
+  "title": "Active Interview Session",
+  "description": "Canonical active-interview session document. Stored by the Gateway in Redis (key session:{sessionId}, JSON value, TTL). See backend/backend.md §10.2. agentState is an opaque blob owned by the Interview Agent; the Gateway stores and returns it verbatim and never interprets it.",
+  "type": "object",
+  "required": [
+    "sessionId",
+    "status",
+    "createdAt",
+    "updatedAt",
+    "candidate",
+    "agentState",
+    "currentQuestion",
+    "questionCount",
+    "daysAsked",
+    "conversation",
+    "scores",
+    "topicScores",
+    "finalFeedback"
+  ],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "enum": ["active", "completed"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "candidate": {
+      "$ref": "#/$defs/candidate"
+    },
+    "agentState": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Opaque interview reasoning state. Owned by the Interview Agent. The Gateway must not validate, interpret, or require any keys here."
+    },
+    "currentQuestion": {
+      "oneOf": [
+        { "$ref": "#/$defs/question" },
+        { "type": "null" }
+      ]
+    },
+    "questionCount": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Record of questions asked, copied verbatim from the Agent's sessionView. No maximum: completion is the Interview Agent's responsibility (never before ≥ 8 questions across ≥ 4 distinct curriculum days). The Gateway must not enforce any floor or cap."
+    },
+    "daysAsked": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "uniqueItems": true
+    },
+    "conversation": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/conversationItem" }
+    },
+    "scores": {
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "topicScores": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/topicScore" }
+    },
+    "finalFeedback": {
+      "oneOf": [
+        { "$ref": "#/$defs/feedback" },
+        { "type": "null" }
+      ]
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "candidate": {
+      "title": "Candidate",
+      "description": "Candidate payload matching candidates.json. The Gateway stores the full candidate verbatim in the session.",
+      "type": "object",
+      "required": ["member", "missions"],
+      "properties": {
+        "member": { "$ref": "#/$defs/candidateMember" },
+        "missions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/candidateMission" }
+        },
+        "signals": {
+          "oneOf": [
+            { "$ref": "#/$defs/candidateSignals" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "candidateMember": {
+      "title": "CandidateMember",
+      "type": "object",
+      "required": ["id", "name", "jobRole"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "jobRole": { "type": "string" },
+        "yearsExperience": { "type": ["integer", "null"] },
+        "education": { "type": ["string", "null"] },
+        "status": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "candidateMission": {
+      "title": "CandidateMission",
+      "type": "object",
+      "required": ["day", "title"],
+      "properties": {
+        "day": { "type": "integer" },
+        "title": { "type": "string" },
+        "passed": { "type": ["boolean", "null"] },
+        "attempts": { "type": ["integer", "null"] },
+        "skipped": { "type": ["boolean", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "candidateSignals": {
+      "title": "CandidateSignals",
+      "type": "object",
+      "properties": {
+        "commitDays": { "type": ["integer", "null"] },
+        "missionsCompleted": { "type": ["integer", "null"] },
+        "missionsFirstTry": { "type": ["integer", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "conversationItem": {
+      "title": "ConversationItem",
+      "type": "object",
+      "required": ["role", "content"],
+      "properties": {
+        "role": {
+          "enum": ["agent", "candidate"]
+        },
+        "content": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "question": {
+      "title": "QuestionMetadata",
+      "description": "Metadata about the question currently on the floor. Owned by the Interview Agent.",
+      "type": "object",
+      "required": ["questionId", "type", "difficulty", "topic", "day"],
+      "properties": {
+        "questionId": { "type": "string" },
+        "type": { "type": "string" },
+        "difficulty": {
+          "enum": ["easy", "medium", "hard"]
+        },
+        "topic": { "type": "string" },
+        "day": { "type": "integer" },
+        "followUpOf": { "type": ["string", "null"] },
+        "expectedConcepts": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "topicScore": {
+      "title": "TopicScore",
+      "description": "Internal topic-level score retained for telemetry/tests.",
+      "type": "object",
+      "required": ["module", "topic", "score", "maxScore"],
+      "properties": {
+        "module": { "type": "integer" },
+        "topic": { "type": "string" },
+        "score": { "type": "number" },
+        "maxScore": { "type": "number" },
+        "notes": { "type": ["string", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "feedback": {
+      "title": "Feedback",
+      "description": "Final feedback — matches the public contract fields from technical-spec.md.",
+      "type": "object",
+      "required": ["summary", "strengths", "gaps", "next"],
+      "properties": {
+        "summary": { "type": "string" },
+        "strengths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "gaps": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "next": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

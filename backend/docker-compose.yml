@@ -1,0 +1,142 @@
+# ================================================================
+# Interview Agent — local infrastructure (backend.md §19)
+#
+# Topology:
+#   gateway :8000 (only host-exposed port)
+#     ├── redis                (internal)
+#     └── interview-agent :8001 (internal)
+#           └── ai-intelligence :8002 (internal)
+#                 └── qdrant   (internal)
+#
+# Internal services resolve each other via Compose DNS names.
+# Only `gateway` publishes a port to the host (8000:8000).
+#
+# LLM_PROVIDER=fake by default so `docker compose up --build` runs
+# with no real API keys. Override LLM_API_KEY / LLM_BASE_URL / etc.
+# via the root .env file.
+#
+# interview-agent and ai-intelligence are MINIMAL temporary
+# placeholders until Shezan's and Meraj's services land.
+# ================================================================
+
+services:
+
+  gateway:
+    build: ./services/gateway
+    ports:
+      - "8000:8000"
+    environment:
+      BACKEND_PORT: "8000"
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      SESSION_TTL_SECONDS: ${SESSION_TTL_SECONDS:-3600}
+      AGENT_SERVICE_URL: http://interview-agent:8001
+      AI_SERVICE_URL: http://ai-intelligence:8002
+      FRONTEND_ORIGINS: ${FRONTEND_ORIGINS:-http://localhost:5173}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      CONNECT_TIMEOUT_SECONDS: ${CONNECT_TIMEOUT_SECONDS:-2}
+      REQUEST_TIMEOUT_SECONDS: ${REQUEST_TIMEOUT_SECONDS:-25}
+      RETRIES: ${RETRIES:-1}
+      MIN_QUESTIONS: ${MIN_QUESTIONS:-8}
+      MIN_CURRICULUM_DAYS: ${MIN_CURRICULUM_DAYS:-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      redis:
+        condition: service_healthy
+      interview-agent:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+
+  interview-agent:
+    build: ./services/interview-agent
+    environment:
+      BACKEND_PORT: "8001"
+      AI_SERVICE_URL: http://ai-intelligence:8002
+      AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-30}
+      AI_RETRIES: ${AI_RETRIES:-1}
+      MIN_QUESTIONS: ${MIN_QUESTIONS:-8}
+      MIN_CURRICULUM_DAYS: ${MIN_CURRICULUM_DAYS:-4}
+      FOLLOWUP_BUDGET: ${FOLLOWUP_BUDGET:-4}
+      FOLLOWUP_MAX_PER_QUESTION: ${FOLLOWUP_MAX_PER_QUESTION:-2}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      ai-intelligence:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+
+  ai-intelligence:
+    build: ./services/ai-intelligence
+    environment:
+      BACKEND_PORT: "8002"
+      LLM_PROVIDER: ${LLM_PROVIDER:-fake}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-0.3}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-30}
+      LLM_RETRIES: ${LLM_RETRIES:-2}
+      EMBEDDINGS_MODEL: ${EMBEDDINGS_MODEL:-text-embedding-3-small}
+      RETRIEVAL_TOP_K: ${RETRIEVAL_TOP_K:-3}
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-curriculum_days}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      qdrant:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "no", "--save", ""]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    networks:
+      - backend
+
+  qdrant:
+    image: qdrant/qdrant
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - backend
+
+volumes:
+  qdrant_data:
+
+networks:
+  backend:
