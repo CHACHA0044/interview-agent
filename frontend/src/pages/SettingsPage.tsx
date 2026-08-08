@@ -3,13 +3,16 @@ import { Settings, Server, Save } from "lucide-react";
 import { Button, Input, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { toast } from "sonner";
+import { useSettingsStore } from "@/stores/settings.store";
 import { LayoutContainer, Section, PageHeading, Surface, Stack } from "@/components/layout/system";
 
 export function SettingsPage() {
-  const [apiEndpoint, setApiEndpoint] = useState("/api/interview");
-  const [useMockService, setUseMockService] = useState(true);
+  const settings = useSettingsStore();
+  const [apiEndpoint, setApiEndpoint] = useState(settings.apiEndpoint);
+  const [useMockService, setUseMockService] = useState(settings.useMockService);
 
   const handleSave = () => {
+    settings.saveConfig({ useMockService, apiEndpoint });
     toast.success("Settings updated successfully");
   };
 
