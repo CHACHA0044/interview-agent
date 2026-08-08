@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
@@ -16,9 +18,40 @@ from app.core.config import Settings, get_settings
 from app.core.errors import APIError
 from app.schemas.api import HealthResponse
 from app.sessions.lifecycle import SessionLifecycle
-from app.sessions.redis_store import RedisSessionStore
+from app.sessions.redis_store import InMemorySessionStore, RedisSessionStore
 
 logger = logging.getLogger(__name__)
+
+
+async def _resolve_session_store(settings: Settings):
+    """Use Redis when reachable; otherwise fall back to in-memory storage.
+
+    The single-container deployment (backend.md, Render) runs without Redis, so
+    the gateway degrades gracefully instead of failing every session call.
+    """
+    redis_client = aioredis.from_url(
+        settings.redis_url,
+        decode_responses=True,
+        socket_connect_timeout=settings.connect_timeout_seconds,
+    )
+    redis_store = RedisSessionStore(
+        redis_client=redis_client,
+        ttl_seconds=settings.session_ttl_seconds,
+    )
+    try:
+        reachable = await asyncio.wait_for(
+            redis_store.ping(), timeout=settings.connect_timeout_seconds + 1.0
+        )
+    except Exception:
+        reachable = False
+    if not reachable:
+        logger.warning(
+            "redis unavailable at %s; using in-memory session store",
+            settings.redis_url,
+        )
+        return InMemorySessionStore(ttl_seconds=settings.session_ttl_seconds)
+    logger.info("session store: redis at %s", settings.redis_url)
+    return redis_store
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -29,15 +62,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         level = logging.INFO
     logging.basicConfig(level=level)
 
-    app = FastAPI(title="Interview Agent Gateway", version="1.0.0")
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        store = await _resolve_session_store(settings)
+        app.state.session_store = store
+        app.state.lifecycle = SessionLifecycle(store, app.state.agent_client)
+        yield
+
+    app = FastAPI(
+        title="Interview Agent Gateway",
+        version="1.0.0",
+        lifespan=lifespan,
+    )
     app.state.settings = settings
 
-    store = RedisSessionStore(
-        redis_client=aioredis.from_url(
-            settings.redis_url, decode_responses=True
-        ),
-        ttl_seconds=settings.session_ttl_seconds,
-    )
     agent_http = InternalHttpClient(
         base_url=settings.agent_service_url,
         connect_timeout=settings.connect_timeout_seconds,
@@ -45,9 +83,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         retries=settings.retries,
         token=settings.internal_api_token,
     )
-    app.state.session_store = store
     app.state.agent_client = AgentClient(agent_http)
-    app.state.lifecycle = SessionLifecycle(store, app.state.agent_client)
 
     app.add_middleware(
         CORSMiddleware,
@@ -67,9 +103,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse)
     async def health(request: Request) -> HealthResponse:
-        store: RedisSessionStore = request.app.state.session_store
+        store = request.app.state.session_store
+        store_kind = (
+            "redis" if isinstance(store, RedisSessionStore) else "in-memory"
+        )
         redis_ok = await store.ping()
-        checks = {"redis": "ok" if redis_ok else "down"}
+        checks = {
+            "redis": "ok" if redis_ok else "down",
+            "store": store_kind,
+        }
         if not redis_ok:
             return JSONResponse(
                 status_code=503,

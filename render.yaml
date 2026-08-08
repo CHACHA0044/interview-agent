@@ -15,4 +15,4 @@ services:
       - key: LOG_LEVEL
         value: INFO
       - key: FRONTEND_ORIGINS
-        value: "*"
+        value: http://localhost:5173,https://interview-agent-eight-rouge.vercel.app

@@ -96,6 +96,7 @@ services:
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-curriculum_days}
       QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      CURRICULUM_PATH: /app/curriculum.json
       INTERNAL_API_TOKEN: ${INTERNAL_API_TOKEN:-}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
