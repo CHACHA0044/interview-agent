@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -22,7 +22,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { APP_NAME } from "@/constants";
 import { useCandidates } from "@/hooks/use-candidates";
 import { useCurriculum } from "@/hooks/use-curriculum";
-import { useSettingsStore } from "@/stores/settings.store";
+import { useGatewayHealth } from "@/hooks/use-gateway-health";
 import {
   LayoutContainer,
   Section,
@@ -168,28 +168,7 @@ function FeatureCard({ feature }: { feature: (typeof FEATURES)[number] }) {
 }
 
 function useGatewayStatus() {
-  const apiEndpoint = useSettingsStore((state) => state.apiEndpoint);
-  const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus("checking");
-
-    const baseUrl = apiEndpoint.replace(/\/api\/interview\/?$/, "");
-    fetch(`${baseUrl}/health`, { method: "GET", signal: AbortSignal.timeout(5000) })
-      .then((res) => {
-        if (!cancelled) setStatus(res.ok ? "online" : "offline");
-      })
-      .catch(() => {
-        if (!cancelled) setStatus("offline");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [apiEndpoint]);
-
-  return { status };
+  return useGatewayHealth();
 }
 
 export function LandingPage() {
@@ -205,6 +184,7 @@ export function LandingPage() {
   const isOnline = status === "online";
   const isOffline = status === "offline";
   const isChecking = status === "checking";
+  const isDegraded = status === "degraded";
 
   return (
     <PageTransition>
@@ -262,7 +242,7 @@ export function LandingPage() {
                     <motion.span
                       className={cn(
                         "h-2.5 w-2.5 rounded-full",
-                        isOnline ? "bg-[#22C55E]" : isOffline ? "bg-[#EF4444]" : "bg-[#D4AF37]"
+                        isOnline ? "bg-[#22C55E]" : isDegraded ? "bg-[#F59E0B]" : isOffline ? "bg-[#EF4444]" : "bg-[#D4AF37]"
                       )}
                       animate={isChecking ? { opacity: [1, 0.4, 1] } : undefined}
                       transition={{ duration: 1.2, repeat: Infinity }}
@@ -271,10 +251,10 @@ export function LandingPage() {
                   </span>
                   <span
                     className={cn(
-                      isOnline ? "text-[#22C55E]" : isOffline ? "text-[#EF4444]" : "text-[#D4AF37]"
+                      isOnline ? "text-[#22C55E]" : isDegraded ? "text-[#F59E0B]" : isOffline ? "text-[#EF4444]" : "text-[#D4AF37]"
                     )}
                   >
-                    {isOnline ? "ONLINE" : isOffline ? "OFFLINE" : "CONNECTING"}
+                    {isOnline ? "ONLINE" : isDegraded ? "DEGRADED" : isOffline ? "OFFLINE" : "CONNECTING"}
                   </span>
                 </div>
 
@@ -307,26 +287,28 @@ export function LandingPage() {
                     <div className="flex items-center gap-3">
                       <span className={cn(
                         "h-9 w-9 rounded-lg flex items-center justify-center",
-                        isOnline ? "bg-[#22C55E]/10 text-[#22C55E]" : isOffline ? "bg-[#EF4444]/10 text-[#EF4444]" : "bg-[#1D1D1D] text-[#D4AF37]"
+                        isOnline ? "bg-[#22C55E]/10 text-[#22C55E]" : isDegraded ? "bg-[#F59E0B]/10 text-[#F59E0B]" : isOffline ? "bg-[#EF4444]/10 text-[#EF4444]" : "bg-[#1D1D1D] text-[#D4AF37]"
                       )}>
-                        {isOnline ? <Activity className="h-4 w-4" /> : isOffline ? <WifiOff className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                        {isOnline ? <Activity className="h-4 w-4" /> : isDegraded ? <Activity className="h-4 w-4" /> : isOffline ? <WifiOff className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                       </span>
                       <div>
                         <span className="text-xs font-semibold text-white block">Evaluation Mode</span>
                         <span className="text-[10px] text-[#737373]">
                           {isOnline
                             ? "Live Gateway Connected"
-                            : isOffline
-                              ? "Gateway Unreachable"
-                              : "Checking Gateway Health"}
+                            : isDegraded
+                              ? "Gateway Degraded · In-Memory Store"
+                              : isOffline
+                                ? "Gateway Unreachable"
+                                : "Checking Gateway Health"}
                         </span>
                       </div>
                     </div>
                     <Badge
-                      variant={isOnline ? "success" : isOffline ? "danger" : "gold"}
+                      variant={isOnline ? "success" : isDegraded ? "warning" : isOffline ? "danger" : "gold"}
                       className="text-[10px]"
                     >
-                      {isOnline ? "Online" : isOffline ? "Offline" : "Checking"}
+                      {isOnline ? "Online" : isDegraded ? "Degraded" : isOffline ? "Offline" : "Checking"}
                     </Badge>
                   </div>
                 </Stack>

@@ -11,7 +11,12 @@ def test_full_interview_flow(client, fake_agent):
         json={"sessionId": "s1", "candidate": make_candidate()},
     )
     assert start.status_code == 200
-    assert start.json() == {"reply": "Welcome. Let's begin.", "done": False, "feedback": None}
+    start_body = start.json()
+    assert start_body["reply"] == "Welcome. Let's begin."
+    assert start_body["done"] is False
+    assert start_body["feedback"] is None
+    assert start_body["question"] is None
+    assert start_body["session"]["questionCount"] == 1
 
     for i in range(2):
         resp = client.post(

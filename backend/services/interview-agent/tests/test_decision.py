@@ -117,3 +117,57 @@ def test_finish_allowed():
     )
     
     assert decision == FollowUpDecision.FINISH
+
+
+def test_non_answer_forces_follow_up_with_targeted_reason():
+    current_question = PlannedQuestion(
+        day=5, module=1, topic="Kubernetes", difficulty=Difficulty.EASY,
+        concepts=["pods", "deployments"], type=QuestionType.TECHNICAL
+    )
+    # A "yes" answer may evaluate high on wording heuristics; the classifier
+    # still forces a targeted follow-up.
+    evaluation = EvaluationResult(
+        question_text="Q?", candidate_answer="yes", score=6.0, concept_coverage=0.6, 
+        technical_accuracy=0.6, depth=0.4, strengths=[], gaps=[], follow_up_required=False
+    )
+    context = FollowUpContext(followups_asked_on_current_question=0, global_follow_up_budget=4)
+    candidate = CandidateContext(
+        member_id="C-1", name="J", job_role="Dev", years_experience=2, tier=CandidateTier.STRONG
+    )
+    
+    decision, strategy = evaluate_next_step(
+        current_question, evaluation, context, candidate,
+        question_count=1, distinct_days_completed=1, remaining_plan_slots=7,
+        non_answer_kind="yes_no"
+    )
+    
+    assert decision == FollowUpDecision.FOLLOW_UP
+    assert strategy is not None
+    assert strategy.non_answer_kind == "yes_no"
+    # The targeted probe uses the question concepts, not a generic gap.
+    assert "pods" in strategy.concepts_to_probe
+    assert "yes/no" in strategy.reason_for_follow_up
+
+
+def test_repeated_question_forces_progression():
+    current_question = PlannedQuestion(
+        day=5, module=1, topic="Test", difficulty=Difficulty.EASY, concepts=["SQL"]
+    )
+    evaluation = EvaluationResult(
+        question_text="Q?", candidate_answer="A!", score=2.0, concept_coverage=0.1, 
+        technical_accuracy=0.1, depth=0.1, strengths=[], gaps=["SQL Joins"], follow_up_required=True
+    )
+    context = FollowUpContext(followups_asked_on_current_question=0, global_follow_up_budget=4)
+    candidate = CandidateContext(
+        member_id="C-1", name="J", job_role="Dev", years_experience=2, tier=CandidateTier.STRONG
+    )
+    
+    # Even with full follow-up budget available, a repeated question must advance.
+    decision, strategy = evaluate_next_step(
+        current_question, evaluation, context, candidate,
+        question_count=3, distinct_days_completed=1, remaining_plan_slots=5,
+        repeats_prior_question=True
+    )
+    
+    assert decision == FollowUpDecision.NEXT_QUESTION
+    assert strategy is None

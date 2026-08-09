@@ -2,14 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import ReactMarkdown from "react-markdown";
 import { motion } from "motion/react";
-import { Send, Square, Bot, User, Clock, BarChart2, BookOpen, Award, AlertTriangle, X } from "lucide-react";
+import { Send, Square, Bot, User, Clock, TimerReset, BarChart2, BookOpen, Award, AlertTriangle, X, Plus } from "lucide-react";
 import { Button, Textarea, Badge, Progress } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useInterviewStore } from "@/stores/interview.store";
+import { useSettingsStore } from "@/stores/settings.store";
 import { useTimer } from "@/hooks/use-timer";
+import { useCountdown, formatCountdown } from "@/hooks/use-countdown";
+import { useGatewayHealth } from "@/hooks/use-gateway-health";
 import { TypingIndicator } from "@/components/features/interview/TypingIndicator";
 import { FeedbackDrawer } from "@/components/features/interview/FeedbackDrawer";
 import { EndInterviewModal } from "@/components/features/interview/EndInterviewModal";
+import { INTERVIEW_CONFIG, SESSION_EXTEND_SECONDS } from "@/constants";
 import { LayoutContainer, Section, LayoutGrid, Surface, Stack, Cluster } from "@/components/layout/system";
 
 export function InterviewPage() {
@@ -22,10 +26,23 @@ export function InterviewPage() {
     isAgentTyping,
     feedback,
     error,
+    liveMeta,
+    sessionDeadline,
     sendMessage,
     endInterview,
     clearError,
+    extendSessionDeadline,
+    setTtlSeconds,
   } = useInterviewStore();
+
+  const showInternalMetadata = useSettingsStore((state) => state.showInternalMetadata);
+  const health = useGatewayHealth();
+
+  useEffect(() => {
+    if (health.ttlSeconds) {
+      setTtlSeconds(health.ttlSeconds);
+    }
+  }, [health.ttlSeconds, setTtlSeconds]);
 
   const [inputAnswer, setInputAnswer] = useState("");
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -34,7 +51,7 @@ export function InterviewPage() {
 
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
-  const { formattedTime, elapsedSeconds, isRunning, start } = useTimer();
+  const { elapsedSeconds, isRunning, start } = useTimer();
 
   useEffect(() => {
     if (!isRunning) {
@@ -47,6 +64,17 @@ export function InterviewPage() {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [messages, isAgentTyping]);
+
+  const remainingSeconds = Math.max(0, INTERVIEW_CONFIG.INTERVIEW_MAX_SECONDS - elapsedSeconds);
+  const remainingFormatted = formatCountdown(remainingSeconds);
+  const isTimeWarning = remainingSeconds <= 5 * 60;
+  const isCompleted = session?.status === "COMPLETED";
+  const ttlRemaining = useCountdown(isCompleted ? sessionDeadline : null);
+  const ttlFormatted = formatCountdown(ttlRemaining);
+  const ttlExpired = ttlRemaining === 0;
+  const lastScore = liveMeta?.session?.scores?.length
+    ? liveMeta.session.scores[liveMeta.session.scores.length - 1]
+    : undefined;
 
   const handleSend = async () => {
     if (!inputAnswer.trim() || isAgentTyping) return;
@@ -90,10 +118,39 @@ export function InterviewPage() {
               </Cluster>
 
               <Cluster gap="sm">
-                <div className="flex items-center gap-2 bg-[#141414] px-3 py-2 rounded-xl border border-[#222222] font-mono text-xs text-[#D4AF37]">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>{formattedTime}</span>
+                <div
+                  className={`flex items-center gap-2 bg-[#141414] px-3 py-2 rounded-xl border font-mono text-xs ${
+                    isTimeWarning ? "border-[#F59E0B]/40 text-[#F59E0B]" : "border-[#222222] text-[#D4AF37]"
+                  }`}
+                  title="Time remaining for this interview turn session"
+                >
+                  <TimerReset className="h-3.5 w-3.5" />
+                  <span>{remainingFormatted}</span>
                 </div>
+
+                {isCompleted && sessionDeadline ? (
+                  <div
+                    className={`flex items-center gap-2 bg-[#141414] px-3 py-2 rounded-xl border font-mono text-xs ${
+                      ttlExpired ? "border-[#EF4444]/40 text-[#EF4444]" : "border-[#222222] text-[#22C55E]"
+                    }`}
+                    title="Gateway session TTL — data is cleared after this window"
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>{ttlExpired ? "SESSION EXPIRED" : `EXPIRES IN ${ttlFormatted}`}</span>
+                    {!ttlExpired ? (
+                      <button
+                        type="button"
+                        onClick={() => extendSessionDeadline(SESSION_EXTEND_SECONDS)}
+                        aria-label="Extend session by 10 minutes"
+                        className="ml-1 inline-flex items-center gap-1 rounded-md bg-[#22C55E]/10 border border-[#22C55E]/30 px-1.5 py-0.5 text-[10px] text-[#22C55E] hover:bg-[#22C55E]/20 transition-colors"
+                      >
+                        <Plus className="h-3 w-3" />
+                        +10m
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <Button variant="outline" size="sm" onClick={() => setIsFeedbackOpen(true)} icon={<BarChart2 className="h-3.5 w-3.5" />}>
                   Telemetry
                 </Button>
@@ -249,6 +306,48 @@ export function InterviewPage() {
                     </div>
                   </div>
                 </Stack>
+
+                {showInternalMetadata ? (
+                  <Stack gap="sm">
+                    <span className="text-[10px] font-mono text-[#737373] uppercase tracking-wider block">
+                      Live Agent Metadata
+                    </span>
+                    <div className="stack stack-xs text-[11px] font-mono">
+                      <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                        <span className="text-[#A3A3A3]">Question Day</span>
+                        <span className="text-white font-semibold">{liveMeta?.question?.day ?? "—"}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                        <span className="text-[#A3A3A3]">Difficulty</span>
+                        <span className="text-white font-semibold">
+                          {liveMeta?.session?.currentDifficulty ?? liveMeta?.question?.difficulty ?? "—"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                        <span className="text-[#A3A3A3]">Topic</span>
+                        <span className="text-white font-semibold truncate max-w-[120px]">
+                          {liveMeta?.question?.topic ?? "—"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                        <span className="text-[#A3A3A3]">Questions Asked</span>
+                        <span className="text-white font-semibold">{liveMeta?.session?.questionCount ?? "—"}</span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                        <span className="text-[#A3A3A3]">Follow-up Budget Left</span>
+                        <span className="text-white font-semibold">
+                          {liveMeta?.session?.followUpBudgetRemaining ?? "—"}
+                        </span>
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#141414] border border-[#222222] flex items-center justify-between">
+                        <span className="text-[#A3A3A3]">Last Score</span>
+                        <span className="text-[#D4AF37] font-semibold">
+                          {lastScore !== undefined ? lastScore.toFixed(1) : "—"}
+                        </span>
+                      </div>
+                    </div>
+                  </Stack>
+                ) : null}
 
                 <Button
                   variant="outline"

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 
+import httpx
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -54,6 +56,28 @@ async def _resolve_session_store(settings: Settings):
     return redis_store
 
 
+async def _keepalive_loop(port: int, interval: float) -> None:
+    """Internal-only self-ping that defeats host cold-sleep.
+
+    Deliberately not a public route and not documented in the README: it only
+    hits this process's own /health endpoint on loopback so a sleeping
+    single-container deployment wakes itself between user requests.
+    """
+    client = httpx.AsyncClient(
+        base_url=f"http://127.0.0.1:{port}",
+        timeout=httpx.Timeout(5.0),
+    )
+    try:
+        while True:
+            await asyncio.sleep(interval)
+            try:
+                await client.get("/health")
+            except Exception as exc:
+                logger.debug("keepalive self-ping failed: %s", exc)
+    finally:
+        await client.aclose()
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
 
@@ -62,12 +86,24 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         level = logging.INFO
     logging.basicConfig(level=level)
 
+    bound_port = int(
+        os.environ.get("PORT") or os.environ.get("BACKEND_PORT") or settings.port
+    )
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         store = await _resolve_session_store(settings)
         app.state.session_store = store
         app.state.lifecycle = SessionLifecycle(store, app.state.agent_client)
+        keepalive = asyncio.create_task(
+            _keepalive_loop(bound_port, settings.keepalive_interval_seconds)
+        )
         yield
+        keepalive.cancel()
+        try:
+            await keepalive
+        except asyncio.CancelledError:
+            pass
 
     app = FastAPI(
         title="Interview Agent Gateway",
@@ -111,6 +147,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         checks = {
             "redis": "ok" if redis_ok else "down",
             "store": store_kind,
+            "ttl": str(settings.session_ttl_seconds),
         }
         if not redis_ok:
             return JSONResponse(

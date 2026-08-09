@@ -33,7 +33,7 @@ class StateMetadata(BaseModel):
     """Metadata regarding the structure and temporal state of the interview."""
     model_config = ConfigDict(extra="forbid")
 
-    state_version: str = Field(default="1.0.0", pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
+    state_version: str = Field(default="1.1.0", pattern=r"^[0-9]+\.[0-9]+\.[0-9]+$")
     created_at_ts: float
     updated_at_ts: float
 
@@ -48,6 +48,7 @@ class InterviewProgress(BaseModel):
     distinct_days_covered: int = Field(default=0, ge=0)
     days_covered_set: List[int] = Field(default_factory=list)
     current_question: Optional[PlannedQuestion] = None
+    asked_question_texts: List[str] = Field(default_factory=list)  # loop safeguard against identical repeats
 
 
 class CompletionState(BaseModel):

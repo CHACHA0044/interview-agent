@@ -18,6 +18,7 @@ Connected Files:
 """
 
 import logging
+import re
 import time
 import uuid
 from collections import defaultdict
@@ -28,6 +29,7 @@ from app.schemas.domain import (
     EvaluationResult,
     FollowUpDecision,
     FollowUpStrategy,
+    InterviewStatus,
     PlannedQuestion,
     ProgressionState,
 )
@@ -48,6 +50,7 @@ from app.schemas.state import (
 )
 
 from app.services.ai_client import AIIntelligenceClient, AIIntelligenceError
+from app.services.answer_quality import classify_answer, is_clarifying_question
 from app.services.calibration import build_candidate_context
 from app.services.contract_mappers import (
     build_curriculum_context,
@@ -60,6 +63,7 @@ from app.services.curriculum_loader import CurriculumLoader
 from app.services.curriculum_selection import build_assessment_plan
 from app.services.decision_engine import evaluate_next_step
 from app.services.difficulty_adapter import adapt_difficulty
+from app.services.moderation import moderation_triggered
 from app.services.planner import generate_interview_plan
 from app.services.progression import advance_to_next_question, process_evaluation_decision
 from app.services.strategy_builder import build_question_strategy
@@ -140,12 +144,36 @@ class InterviewOrchestrator:
         )
         current_question.question_id = qid
 
+        # 0. Content moderation (server-side): terminate immediately on abuse.
+        moderation_reason = moderation_triggered(request.message)
+        if moderation_reason:
+            return self._terminate_for_moderation(
+                state, current_question, request.message, moderation_reason
+            )
+
+        # 0b. Clarifying question: answer it and re-ask, consuming no slot/budget.
+        if is_clarifying_question(request.message):
+            return self._respond_clarification(state, current_question, request.message)
+
+        # 0c. Classify the answer so non-answers get targeted follow-ups.
+        answer_kind = classify_answer(request.message, current_question.concepts)
+
         # 1. Evaluate the candidate's answer.
-        evaluation = await self._evaluate_answer(state, current_question, request.message)
+        evaluation = await self._evaluate_answer(
+            state, current_question, request.message, answer_kind
+        )
         evaluation.question_id = qid
         evaluation.day = current_question.day
         evaluation.topic = current_question.topic
         state.history.append(evaluation)
+
+        # Loop safeguard: if the exact same question text is already being asked
+        # again, force progression instead of looping on it.
+        current_text = current_question.question_text or ""
+        repeats_prior_question = (
+            bool(current_text)
+            and state.progress.asked_question_texts.count(current_text) > 1
+        )
 
         # 2. Adapt difficulty from the score.
         state.difficulty_state = adapt_difficulty(state.difficulty_state, evaluation.score)
@@ -159,6 +187,8 @@ class InterviewOrchestrator:
             question_count=state.progress.total_questions_asked,
             distinct_days_completed=state.progress.distinct_days_covered,
             remaining_plan_slots=len(state.interview_plan) - state.progress.current_slot,
+            non_answer_kind=answer_kind,
+            repeats_prior_question=repeats_prior_question,
         )
 
         # 4. Apply the decision to global state.
@@ -205,9 +235,11 @@ class InterviewOrchestrator:
         current = state.progress.current_question
         if current is None:
             raise ValueError("Invalid state: no current question to expose.")
+        text = self._ensure_distinct_text(state, text, current)
         qid = current.question_id or str(uuid.uuid4())
         current.question_id = qid
         current.question_text = text
+        state.progress.asked_question_texts.append(text)
         return AgentTurnResponse(
             agentState=state.model_dump(),
             sessionView=self._session_view(state),
@@ -229,9 +261,11 @@ class InterviewOrchestrator:
         if current is None:
             raise ValueError("Invalid state: FOLLOW_UP_PENDING without a current question.")
         text = await self._generate_follow_up(state, follow_up_strategy, current, conversation)
+        text = self._ensure_distinct_text(state, text, current)
         qid = current.question_id or str(uuid.uuid4())
         current.question_id = qid
         current.question_text = text
+        state.progress.asked_question_texts.append(text)
         return AgentTurnResponse(
             agentState=state.model_dump(),
             sessionView=self._session_view(state),
@@ -306,6 +340,7 @@ class InterviewOrchestrator:
         state: AgentState,
         current_question: PlannedQuestion,
         answer: str,
+        kind: str = "ok",
     ) -> EvaluationResult:
         ai_question = {
             "questionId": current_question.question_id,
@@ -336,7 +371,7 @@ class InterviewOrchestrator:
             )
         except AIIntelligenceError as exc:
             logger.warning("evaluation failed, using fallback: %s", exc)
-            return self._fallback_evaluation(current_question, answer)
+            return self._fallback_evaluation(current_question, answer, kind)
 
     async def _generate_feedback(self, state: AgentState) -> Feedback:
         evaluations, coverage, missed, topic_scores = self._feedback_inputs(state)
@@ -373,12 +408,38 @@ class InterviewOrchestrator:
     def _fallback_followup_text(self, follow_up_strategy: FollowUpStrategy, topic: str) -> str:
         probes = follow_up_strategy.concepts_to_probe[:3]
         probe_text = ", ".join(probes) if probes else "the topic"
+        kind = follow_up_strategy.non_answer_kind
+        if kind == "empty":
+            return (
+                f"You didn't provide an answer. Can you walk me through your thinking "
+                f"on {topic}, touching on {probe_text}?"
+            )
+        if kind == "too_short":
+            return (
+                f"That was quite brief. Can you elaborate on {topic} and explain your "
+                f"reasoning step by step, covering {probe_text}?"
+            )
+        if kind == "yes_no":
+            return (
+                f"A one-word answer isn't enough to assess this. Please explain your "
+                f"reasoning about {topic} in detail, covering {probe_text}."
+            )
+        if kind == "off_topic":
+            return (
+                f"That didn't directly address the question about {topic}. Can you "
+                f"explain how your answer relates to {probe_text}?"
+            )
         return (
             f"Let's dig a little deeper on {topic}. Based on your previous answer, "
             f"can you explain how {probe_text} connect to the bigger picture?"
         )
 
-    def _fallback_evaluation(self, current_question: PlannedQuestion, answer: str) -> EvaluationResult:
+    def _fallback_evaluation(
+        self,
+        current_question: PlannedQuestion,
+        answer: str,
+        kind: str = "ok",
+    ) -> EvaluationResult:
         answer_lower = (answer or "").strip().lower()
         words = answer_lower.split()
         if not words:
@@ -393,16 +454,27 @@ class InterviewOrchestrator:
                 follow_up_required=True,
             )
         concepts = current_question.concepts or []
-        if concepts:
-            matched = [c for c in concepts if c.lower() in answer_lower]
-            coverage = len(matched) / len(concepts)
-            gaps = [c for c in concepts if c.lower() not in answer_lower]
-            strengths = [c for c in concepts if c.lower() in answer_lower][:3]
-        else:
-            coverage = min(len(words) / 40.0, 1.0)
-            gaps = []
-            strengths = ["Provided a response."] if coverage > 0.5 else []
+        matched = [c for c in concepts if c.lower() in answer_lower] if concepts else []
+        coverage = len(matched) / len(concepts) if concepts else min(len(words) / 40.0, 1.0)
+        gaps = [c for c in concepts if c.lower() not in answer_lower] if concepts else []
+        strengths = (
+            [c for c in concepts if c.lower() in answer_lower][:3]
+            if concepts
+            else (["Provided a response."] if coverage > 0.5 else [])
+        )
+        if not gaps and not concepts:
+            gaps = [] if coverage > 0.5 else ["Provided a response."]
+
         score = round(min(2.0 + coverage * 8.0, 10.0), 2)
+        if kind == "too_short":
+            score = min(score, 3.0)
+            gaps = ["Answer was too brief to assess."] + gaps
+        elif kind == "yes_no":
+            score = min(score, 2.0)
+            gaps = ["Answer was a yes/no response with no technical reasoning."] + gaps
+        elif kind == "off_topic":
+            score = min(score, 3.0)
+            gaps = ["Answer did not address the expected concepts."] + gaps
         return EvaluationResult(
             question_text=current_question.question_text or current_question.topic,
             candidate_answer=answer,
@@ -439,6 +511,110 @@ class InterviewOrchestrator:
         )
 
     # ------------------------------------------------------------------ misc
+
+    @staticmethod
+    def _normalize_text(text: str) -> str:
+        return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+    def _ensure_distinct_text(self, state: AgentState, text: str, current: PlannedQuestion) -> str:
+        """Guarantee a question text is never asked twice verbatim (loop safeguard)."""
+        asked = [self._normalize_text(t) for t in state.progress.asked_question_texts]
+        if self._normalize_text(text) not in asked:
+            return text
+        concepts = ", ".join(current.concepts[:3]) if current.concepts else "the core ideas"
+        variants = [
+            f"Let's look at this from another angle: explain {current.topic} and how it works in practice, covering {concepts}.",
+            f"To build on what we discussed: describe {current.topic} step by step, touching on {concepts}.",
+            f"Putting it together: how would you approach {current.topic} in a real system, and what role do {concepts} play?",
+        ]
+        return variants[len(asked) % len(variants)]
+
+    def _respond_clarification(
+        self,
+        state: AgentState,
+        current_question: PlannedQuestion,
+        message: str,
+    ) -> AgentTurnResponse:
+        """Answer a candidate clarifying question and re-ask, consuming nothing."""
+        topic = current_question.topic
+        concepts = current_question.concepts or []
+        concept_text = ", ".join(concepts) if concepts else "the core ideas behind the topic"
+        lowered = (message or "").lower()
+        day_def = self.curriculum_loader.get_day(current_question.day)
+        objectives = day_def.objectives[:2] if day_def else []
+        objective_text = " ".join(objectives) if objectives else concept_text
+
+        if any(k in lowered for k in ("repeat", "rephrase", "again", "ask again")):
+            reply = (
+                f"Of course. I'm asking you to explain {topic} in your own words, "
+                f"covering {concept_text}. Take your time."
+            )
+        else:
+            reply = (
+                f"Good question. To clarify: I'm asking about {topic} (Day {current_question.day}). "
+                f"Specifically, address {concept_text}. Think about {objective_text}. "
+                "Please go ahead and answer in your own words."
+            )
+        return AgentTurnResponse(
+            agentState=state.model_dump(),
+            sessionView=self._session_view(state),
+            reply=reply,
+            done=False,
+            feedback=None,
+            question=self._question_metadata(current_question),
+        )
+
+    def _terminate_for_moderation(
+        self,
+        state: AgentState,
+        current_question: PlannedQuestion,
+        answer: str,
+        reason: str,
+    ) -> AgentTurnResponse:
+        """Server-side content moderation: end the interview with the lowest score."""
+        evaluation = EvaluationResult(
+            question_text=current_question.question_text or current_question.topic,
+            candidate_answer=answer,
+            score=0.0,
+            concept_coverage=0.0,
+            technical_accuracy=0.0,
+            depth=0.0,
+            strengths=[],
+            gaps=[f"Response flagged for policy violation: {reason}"],
+            follow_up_required=False,
+            question_id=current_question.question_id,
+            day=current_question.day,
+            topic=current_question.topic,
+        )
+        state.history.append(evaluation)
+        state.progress.progression_state = ProgressionState.COMPLETED
+        state.progress.current_question = None
+        state.completion.status = InterviewStatus.COMPLETED
+        state.completion.is_eligible_for_completion = True
+        state.completion.completion_reason = (
+            f"Interview terminated for policy violation: {reason}"
+        )
+        name = state.candidate_payload.get("member", {}).get("name", "Candidate")
+        feedback = Feedback(
+            summary=(
+                f"{name}'s interview was terminated early because a response was "
+                f"flagged for {reason}. The assessment was stopped and no score was awarded."
+            ),
+            strengths=[],
+            gaps=[f"Policy violation: {reason}"],
+            next=["Contact the interview administrator if you believe this is a mistake."],
+        )
+        return AgentTurnResponse(
+            agentState=state.model_dump(),
+            sessionView=self._session_view(state),
+            reply=(
+                "This assessment interview is being ended because your last response "
+                "was flagged as inappropriate. No further questions will be asked."
+            ),
+            done=True,
+            feedback=feedback,
+            question=None,
+        )
 
     def _feedback_inputs(self, state: AgentState):
         evaluations: List[Dict[str, Any]] = []
@@ -491,6 +667,8 @@ class InterviewOrchestrator:
             daysAsked=sorted(set(state.progress.days_covered_set)),
             scores=[h.score for h in state.history],
             status="completed" if completed else "active",
+            followUpBudgetRemaining=state.follow_up_context.global_follow_up_budget,
+            currentDifficulty=state.difficulty_state.current_difficulty.value,
         )
 
     @staticmethod

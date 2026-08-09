@@ -34,6 +34,8 @@ class SessionView(BaseModel):
     daysAsked: list[int] = Field(default_factory=list)
     scores: list[float] = Field(default_factory=list)
     status: str = "active"
+    followUpBudgetRemaining: int | None = None
+    currentDifficulty: str | None = None
 
 
 class AgentStartRequest(BaseModel):

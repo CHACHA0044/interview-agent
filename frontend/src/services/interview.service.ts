@@ -49,8 +49,49 @@ const liveFeedbackBySession = new Map<string, InterviewFeedback>();
 /** Candidate id per session, captured at start for feedback mapping. */
 const liveCandidateBySession = new Map<string, string>();
 
+const FEEDBACK_STORAGE_KEY = "interview-agent-feedback";
+
+/** Drop cached live feedback and candidate mappings (danger-zone reset). */
+export function clearSessionCache(): void {
+  liveFeedbackBySession.clear();
+  liveCandidateBySession.clear();
+  try {
+    window.localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures on reset.
+  }
+}
+
+/**
+ * Hydrate the last completed feedback across reloads so the session expiry /
+ * resume affordances survive a refresh within the gateway TTL window.
+ */
+export function readPersistedFeedback(sessionId?: string): InterviewFeedback | null {
+  try {
+    const raw = window.localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as InterviewFeedback | null;
+    if (!parsed || (sessionId && parsed.sessionId !== sessionId)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function persistFeedback(feedback: InterviewFeedback): void {
+  try {
+    window.localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(feedback));
+  } catch {
+    // Non-fatal: storage unavailable (private mode / quota).
+  }
+}
+
 function requestTimeoutMs(): number {
   return useSettingsStore.getState().requestTimeoutMs;
+}
+
+function maxRetries(): number {
+  return useSettingsStore.getState().maxRetries;
 }
 
 function liveEndpoint(): string {
@@ -61,23 +102,53 @@ function liveEndpoint(): string {
   return endpoint;
 }
 
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 async function postTurn(body: {
   sessionId: string;
   candidate?: Candidate;
   message?: string;
 }): Promise<ApiInterviewResponse> {
-  const response = await fetch(liveEndpoint(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-    signal: AbortSignal.timeout(requestTimeoutMs()),
-  });
+  const timeoutMs = requestTimeoutMs();
+  const retries = Math.max(0, maxRetries());
+  const endpoint = liveEndpoint();
 
-  if (!response.ok) {
-    throw new Error(await describeHttpError(response));
+  for (let attempt = 0; ; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      // Network / timeout failures are transient; retry with a small backoff.
+      if (attempt < retries) {
+        await delay(250 * (attempt + 1));
+        continue;
+      }
+      throw err instanceof Error
+        ? err
+        : new Error("Interview service request failed");
+    }
+
+    if (response.ok) {
+      return (await response.json()) as ApiInterviewResponse;
+    }
+
+    const message = await describeHttpError(response);
+    // Client errors are deterministic — never retry them. Server pressure and
+    // rate limiting get another chance.
+    const retryable = response.status >= 500 || response.status === 429;
+    if (retryable && attempt < retries) {
+      await delay(250 * (attempt + 1));
+      continue;
+    }
+    throw new Error(message);
   }
-
-  return (await response.json()) as ApiInterviewResponse;
 }
 
 async function describeHttpError(response: Response): Promise<string> {
@@ -161,14 +232,13 @@ export async function sendMessage(
   });
 
   if (response.done && response.feedback) {
-    liveFeedbackBySession.set(
+    const feedback = toInterviewFeedback(
+      response.feedback,
       request.sessionId,
-      toInterviewFeedback(
-        response.feedback,
-        request.sessionId,
-        liveCandidateBySession.get(request.sessionId) ?? ""
-      )
+      liveCandidateBySession.get(request.sessionId) ?? ""
     );
+    liveFeedbackBySession.set(request.sessionId, feedback);
+    persistFeedback(feedback);
   }
 
   return response;

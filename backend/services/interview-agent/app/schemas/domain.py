@@ -132,6 +132,7 @@ class FollowUpStrategy(BaseModel):
     candidate_tier: CandidateTier
     candidate_job_role: str
     follow_up_of: Optional[str] = None
+    non_answer_kind: Optional[str] = None  # ok/empty/too_short/yes_no/off_topic; drives targeted wording
 
 
 class FollowUpContext(BaseModel):

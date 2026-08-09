@@ -22,6 +22,13 @@ from app.schemas.domain import (
     CandidateContext
 )
 
+_ANSWER_KIND_LABELS = {
+    "empty": "no answer",
+    "too_short": "too-short",
+    "yes_no": "yes/no",
+    "off_topic": "off-topic",
+}
+
 
 def evaluate_next_step(
     current_question: PlannedQuestion,
@@ -30,32 +37,57 @@ def evaluate_next_step(
     candidate: CandidateContext,
     question_count: int,
     distinct_days_completed: int,
-    remaining_plan_slots: int
+    remaining_plan_slots: int,
+    non_answer_kind: str = "ok",
+    repeats_prior_question: bool = False
 ) -> Tuple[FollowUpDecision, Optional[FollowUpStrategy]]:
     """
     Evaluates the candidate's answer and determines the next logical step 
     for the interview orchestration state machine.
     """
-    
+
+    # RULE 0: Loop Safeguard
+    # If the exact same question text is being graded a second time, the agent
+    # must not stall on it. Force progression to the next planned question.
+    if repeats_prior_question:
+        return FollowUpDecision.NEXT_QUESTION, None
+
     # RULE 1: Evaluate Follow-up Trigger
-    # Score < 6.0 AND global budget > 0 AND local budget < per-question limit
-    if evaluation.score < 6.0:
+    # A low score OR a non-answer (empty / too short / yes-no / off-topic)
+    # triggers a targeted follow-up while the global + per-question budgets allow.
+    score_triggers_follow_up = evaluation.score < 6.0 or non_answer_kind != "ok"
+    if score_triggers_follow_up:
         if (
             follow_up_context.global_follow_up_budget > 0
             and follow_up_context.followups_asked_on_current_question < follow_up_context.max_followups_per_question
         ):
-            # We will follow up.
-            reason = f"Candidate scored {evaluation.score}. Probing gaps: {', '.join(evaluation.gaps)}"
+            if non_answer_kind != "ok":
+                probes = (
+                    list(current_question.concepts)
+                    if current_question.concepts
+                    else (evaluation.gaps or ["Technical reasoning"])
+                )
+                label = _ANSWER_KIND_LABELS.get(
+                    non_answer_kind, non_answer_kind.replace("_", " ")
+                )
+                reason = (
+                    f"Candidate gave a {label} response. "
+                    f"Requesting elaboration on {', '.join(probes[:3])}."
+                )
+            else:
+                probes = evaluation.gaps if evaluation.gaps else ["Technical reasoning"]
+                reason = f"Candidate scored {evaluation.score}. Probing gaps: {', '.join(evaluation.gaps)}"
             strategy = FollowUpStrategy(
                 day=current_question.day,
                 module=current_question.module,
                 previous_answer=evaluation.candidate_answer,
-                concepts_to_probe=evaluation.gaps if evaluation.gaps else ["Technical reasoning"],
+                concepts_to_probe=probes,
                 difficulty=current_question.difficulty,
                 reason_for_follow_up=reason,
                 candidate_tier=candidate.tier,
                 candidate_job_role=candidate.job_role,
-                follow_up_of=current_question.question_id
+                follow_up_of=current_question.question_id,
+                non_answer_kind=non_answer_kind
             )
             return FollowUpDecision.FOLLOW_UP, strategy
 

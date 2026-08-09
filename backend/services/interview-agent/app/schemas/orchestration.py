@@ -71,6 +71,8 @@ class SessionView(BaseModel):
     daysAsked: List[int] = Field(default_factory=list)
     scores: List[float] = Field(default_factory=list)
     status: str = "active"
+    followUpBudgetRemaining: Optional[int] = None
+    currentDifficulty: Optional[str] = None
 
 
 class Feedback(BaseModel):

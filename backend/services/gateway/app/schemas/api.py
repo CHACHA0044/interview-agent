@@ -63,10 +63,31 @@ class Feedback(BaseModel):
     next: list[str] = []
 
 
+class Question(BaseModel):
+    questionId: str
+    type: str = "technical"
+    difficulty: str = "medium"
+    topic: str = ""
+    day: int = 1
+    followUpOf: Optional[str] = None
+    expectedConcepts: list[str] = []
+
+
+class SessionView(BaseModel):
+    questionCount: int = 0
+    daysAsked: list[int] = []
+    scores: list[float] = []
+    status: str = "active"
+    followUpBudgetRemaining: int | None = None
+    currentDifficulty: str | None = None
+
+
 class InterviewResponse(BaseModel):
     reply: str
     done: bool = False
     feedback: Optional[Feedback] = None
+    question: Optional[Question] = None
+    session: Optional[SessionView] = None
 
 
 class HealthResponse(BaseModel):

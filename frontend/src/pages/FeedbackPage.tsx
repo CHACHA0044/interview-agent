@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import {
   Award,
   CheckCircle2,
@@ -9,17 +9,34 @@ import {
   FileText,
   ArrowRight,
   Target,
+  Clock,
+  Plus,
 } from "lucide-react";
 import { Badge, Progress, Button } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useInterviewStore } from "@/stores/interview.store";
+import { useCountdown, formatCountdown } from "@/hooks/use-countdown";
+import { useGatewayHealth } from "@/hooks/use-gateway-health";
+import { SESSION_EXTEND_SECONDS } from "@/constants";
 import type { InterviewFeedback } from "@/types";
 import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface, Stack, Cluster } from "@/components/layout/system";
 
 export function FeedbackPage() {
   const navigate = useNavigate();
-  const { feedback: storeFeedback } = useInterviewStore();
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const { feedback: storeFeedback, sessionDeadline, extendSessionDeadline, setTtlSeconds } = useInterviewStore();
   const [feedback, setFeedback] = useState<InterviewFeedback | null>(storeFeedback);
+
+  const health = useGatewayHealth();
+  useEffect(() => {
+    if (health.ttlSeconds) {
+      setTtlSeconds(health.ttlSeconds);
+    }
+  }, [health.ttlSeconds, setTtlSeconds]);
+
+  const ttlRemaining = useCountdown(sessionDeadline);
+  const ttlFormatted = formatCountdown(ttlRemaining);
+  const ttlExpired = ttlRemaining === 0;
 
   useEffect(() => {
     if (storeFeedback) {
@@ -93,6 +110,55 @@ export function FeedbackPage() {
                 <Progress value={feedback.overallScore} size="md" color="gold" />
               </div>
             </div>
+          </Surface>
+
+          <Surface
+            padding="md"
+            className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border ${
+              ttlExpired ? "border-[#EF4444]/30" : "border-[#22C55E]/25"
+            }`}
+          >
+            <div className="flex items-center gap-4">
+              <span
+                className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  ttlExpired ? "bg-[#EF4444]/10 text-[#EF4444]" : "bg-[#22C55E]/10 text-[#22C55E]"
+                }`}
+              >
+                <Clock className="h-5 w-5" />
+              </span>
+              <Stack gap="xs">
+                <span className="text-sm font-semibold text-white">
+                  {ttlExpired ? "Session Expired" : `Session Expires In ${ttlFormatted}`}
+                </span>
+                <span className="text-[11px] text-[#737373]">
+                  {ttlExpired
+                    ? "The gateway session window has closed. Feedback was preserved locally."
+                    : "Gateway session data is cleared after this window. Resume or extend to keep it live."}
+                </span>
+              </Stack>
+            </div>
+            {!ttlExpired ? (
+              <Cluster gap="sm">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => extendSessionDeadline(SESSION_EXTEND_SECONDS)}
+                  icon={<Plus className="h-3.5 w-3.5" />}
+                >
+                  Extend +10 min
+                </Button>
+                {sessionId ? (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => navigate(`/interview/${sessionId}`)}
+                    icon={<RotateCcw className="h-3.5 w-3.5" />}
+                  >
+                    Resume Interview
+                  </Button>
+                ) : null}
+              </Cluster>
+            ) : null}
           </Surface>
         </LayoutContainer>
       </Section>

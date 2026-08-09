@@ -13,7 +13,7 @@ from app.schemas.orchestration import AgentCompleteRequest, AgentNextRequest, Ca
 from app.schemas.state import AgentState
 from app.services.curriculum_loader import CurriculumLoader
 from app.services.orchestrator import InterviewOrchestrator
-from tests.fakes import FakeAIClient
+from tests.fakes import FakeAIClient, FailingFollowupAIClient
 
 os.environ.setdefault("CURRICULUM_PATH", os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "curriculum.json"))
 
@@ -121,3 +121,89 @@ async def test_complete_returns_feedback_when_floors_met():
     assert res.done is True
     assert res.feedback is not None
     assert res.sessionView.status == "completed"
+
+
+async def test_clarifying_question_consumes_no_slot_or_budget():
+    loader = CurriculumLoader()
+    orchestrator = InterviewOrchestrator(loader, FakeAIClient(scores=[4.0] * 50))
+
+    res_start = await orchestrator.start("abc-clar", CANDIDATE)
+    first_qid = res_start.question.questionId
+    first_reply = res_start.reply
+    state = res_start.agentState
+
+    res = await orchestrator.next(
+        AgentNextRequest(
+            sessionId="abc-clar",
+            candidate=CANDIDATE,
+            agentState=state,
+            conversation=_conversation(("agent", first_reply), ("candidate", "What do you mean by chunk size?")),
+            currentQuestion=res_start.question,
+            message="What do you mean by chunk size?",
+        )
+    )
+
+    assert res.done is False
+    # No question slot consumed and no follow-up budget burned.
+    assert res.sessionView.questionCount == 1
+    assert res.question.questionId == first_qid
+    # The reply clarifies AND re-asks; it is not the question itself.
+    assert "To clarify" in res.reply
+    assert "answer in your own words" in res.reply.lower()
+    # State must be untouched so the candidate can answer the original question.
+    assert AgentState.model_validate(res.agentState).progress.total_questions_asked == 1
+    assert AgentState.model_validate(res.agentState).follow_up_context.global_follow_up_budget == 4
+
+
+async def test_non_answer_triggers_targeted_fallback_followup():
+    loader = CurriculumLoader()
+    orchestrator = InterviewOrchestrator(loader, FailingFollowupAIClient(scores=[4.0] * 50))
+
+    res_start = await orchestrator.start("abc-yes", CANDIDATE)
+    first_qid = res_start.question.questionId
+    state = res_start.agentState
+
+    res = await orchestrator.next(
+        AgentNextRequest(
+            sessionId="abc-yes",
+            candidate=CANDIDATE,
+            agentState=state,
+            conversation=_conversation(("agent", res_start.reply), ("candidate", "yes")),
+            currentQuestion=res_start.question,
+            message="yes",
+        )
+    )
+
+    assert res.done is False
+    assert res.question is not None
+    assert res.question.followUpOf == first_qid
+    # The deterministic fallback must be a targeted elaboration, not generic praise.
+    assert "one-word" in res.reply.lower() or "reasoning" in res.reply.lower()
+
+
+async def test_moderation_terminates_interview():
+    loader = CurriculumLoader()
+    orchestrator = InterviewOrchestrator(loader, FakeAIClient(scores=[9.0] * 50))
+
+    res_start = await orchestrator.start("abc-mod", CANDIDATE)
+    state = res_start.agentState
+
+    res = await orchestrator.next(
+        AgentNextRequest(
+            sessionId="abc-mod",
+            candidate=CANDIDATE,
+            agentState=state,
+            conversation=_conversation(("agent", res_start.reply), ("candidate", "fuck you, this is stupid")),
+            currentQuestion=res_start.question,
+            message="fuck you, this is stupid",
+        )
+    )
+
+    assert res.done is True
+    assert res.feedback is not None
+    assert res.sessionView.status == "completed"
+    assert any("policy" in gap.lower() for gap in res.feedback.gaps)
+    # The violating response must be scored at the absolute floor.
+    final_state = AgentState.model_validate(res.agentState)
+    assert final_state.completion.is_eligible_for_completion is True
+    assert final_state.history[-1].score == 0.0

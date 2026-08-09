@@ -2,6 +2,8 @@
 
 from typing import Any, Dict, List
 
+from app.services.ai_client import AIIntelligenceError
+
 
 class FakeAIClient:
     """Deterministic stand-in for AIIntelligenceClient (no network)."""
@@ -66,3 +68,15 @@ class FakeAIClient:
             "gaps": ["Deeper technical depth"],
             "next": ["Review Day 1"],
         }
+
+
+class FailingFollowupAIClient(FakeAIClient):
+    """FakeAIClient variant whose follow-up generation always fails.
+
+    Forces the orchestrator onto the deterministic fallback so the targeted
+    non-answer wording can be asserted deterministically.
+    """
+
+    async def generate_followup(self, **kwargs: Any) -> Dict[str, Any]:
+        self.followup_count += 1
+        raise AIIntelligenceError("follow-up generation unavailable")

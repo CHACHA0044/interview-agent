@@ -50,7 +50,18 @@ export const INTERVIEW_CONFIG = {
   MAX_DURATION_MINUTES: 60,
   TYPING_DELAY_MS: 1500,
   MESSAGE_DELAY_MS: 800,
+  /** Hard ceiling for a live interview turn session (18 minutes). */
+  INTERVIEW_MAX_SECONDS: 18 * 60,
 } as const;
+
+/** Gateway health poll cadence (ms). */
+export const GATEWAY_HEALTH_POLL_MS = 30_000;
+/** Extra runway granted by the "Extend session" action (seconds). */
+export const SESSION_EXTEND_SECONDS = 10 * 60;
+/** Fallback gateway session TTL when /health is unreachable. */
+export const DEFAULT_SESSION_TTL_SECONDS = 3600;
+/** localStorage key for the resumable session schedule record. */
+export const SESSION_SCHEDULE_STORAGE_KEY = "interview-agent-session-schedule";
 
 /** Status colors for Black & Gold theme */
 export const STATUS_COLORS = {

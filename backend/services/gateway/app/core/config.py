@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     connect_timeout_seconds: float = 2.0
     request_timeout_seconds: float = 25.0
     retries: int = 1
+    keepalive_interval_seconds: float = 180.0
 
     @property
     def cors_origins(self) -> list[str]:

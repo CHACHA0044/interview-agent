@@ -39,8 +39,15 @@ import type {
   InterviewMessage,
   InterviewFeedback,
   Candidate,
+  InterviewLiveMetadata,
 } from "@/types";
 import * as interviewService from "@/services/interview.service";
+import {
+  clearSessionSchedule,
+  readSessionSchedule,
+  writeSessionSchedule,
+} from "@/services/session.schedule";
+import { DEFAULT_SESSION_TTL_SECONDS } from "@/constants";
 import dayjs from "dayjs";
 
 interface InterviewState {
@@ -58,6 +65,12 @@ interface InterviewState {
   isLoading: boolean;
   /** Error state */
   error: string | null;
+  /** Live agent metadata for the debug panel */
+  liveMeta: InterviewLiveMetadata | null;
+  /** ISO deadline when the gateway session expires */
+  sessionDeadline: string | null;
+  /** Gateway session TTL (seconds) reported by /health */
+  ttlSeconds: number;
 
   /** Actions */
   startInterview: (candidate: Candidate) => Promise<void>;
@@ -65,17 +78,26 @@ interface InterviewState {
   endInterview: () => Promise<void>;
   clearError: () => void;
   incrementTimer: () => void;
+  setLiveMeta: (meta: InterviewLiveMetadata) => void;
+  setTtlSeconds: (seconds: number) => void;
+  extendSessionDeadline: (seconds: number) => void;
   reset: () => void;
 }
+
+const initialSchedule = readSessionSchedule();
+const persistedFeedback = interviewService.readPersistedFeedback();
 
 const initialState = {
   session: null,
   messages: [],
   isAgentTyping: false,
-  feedback: null,
+  feedback: persistedFeedback,
   elapsedSeconds: 0,
   isLoading: false,
   error: null,
+  liveMeta: null,
+  sessionDeadline: initialSchedule?.deadline ?? null,
+  ttlSeconds: DEFAULT_SESSION_TTL_SECONDS,
 };
 
 export const useInterviewStore = create<InterviewState>((set, get) => ({
@@ -99,9 +121,23 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
         questionIndex: 0,
         topic: "Introduction",
       };
+      const deadline = dayjs()
+        .add(get().ttlSeconds, "second")
+        .toISOString();
+      writeSessionSchedule({
+        sessionId: session.sessionId,
+        candidateId: session.candidateId,
+        deadline,
+        status: "IN_PROGRESS",
+      });
       set({
         session,
         messages: [systemMessage, agentMessage],
+        liveMeta: {
+          question: response.question ?? null,
+          session: response.session ?? null,
+        },
+        sessionDeadline: deadline,
         isLoading: false,
       });
     } catch (err) {
@@ -144,6 +180,10 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
 
       set((state) => ({
         messages: [...state.messages, agentMessage],
+        liveMeta: {
+          question: response.question ?? null,
+          session: response.session ?? null,
+        },
         isAgentTyping: false,
         session: state.session
           ? {
@@ -153,6 +193,13 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
             }
           : null,
       }));
+
+      if (response.done) {
+        const schedule = readSessionSchedule();
+        if (schedule?.sessionId === session.sessionId) {
+          writeSessionSchedule({ ...schedule, status: "COMPLETED" });
+        }
+      }
 
       if (response.done && response.feedback) {
         const feedbackData = await interviewService.getInterviewFeedback(session.sessionId);
@@ -200,7 +247,31 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 }));
   },
 
+  setLiveMeta: (meta) => {
+    set({ liveMeta: meta });
+  },
+
+  setTtlSeconds: (seconds) => {
+    if (seconds > 0) {
+      set({ ttlSeconds: seconds });
+    }
+  },
+
+  extendSessionDeadline: (seconds) => {
+    const { sessionDeadline } = get();
+    const base = sessionDeadline ?? new Date().toISOString();
+    const extended = new Date(new Date(base).getTime() + seconds * 1000).toISOString();
+    writeSessionSchedule({
+      sessionId: get().session?.sessionId ?? readSessionSchedule()?.sessionId ?? "session-unknown",
+      candidateId: get().session?.candidateId ?? readSessionSchedule()?.candidateId ?? "unknown",
+      deadline: extended,
+      status: get().session?.status === "COMPLETED" ? "COMPLETED" : "IN_PROGRESS",
+    });
+    set({ sessionDeadline: extended });
+  },
+
   reset: () => {
+    clearSessionSchedule();
     set(initialState);
   },
 }));

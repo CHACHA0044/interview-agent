@@ -162,6 +162,25 @@ export interface ApiInterviewRequest {
   message?: string;
 }
 
+export interface ApiQuestionMeta {
+  questionId: string;
+  type?: string;
+  difficulty?: QuestionDifficulty;
+  topic?: string;
+  day?: number;
+  followUpOf?: string | null;
+  expectedConcepts?: string[];
+}
+
+export interface ApiSessionMeta {
+  questionCount: number;
+  daysAsked: number[];
+  scores: number[];
+  status: string;
+  followUpBudgetRemaining?: number | null;
+  currentDifficulty?: string | null;
+}
+
 export interface ApiInterviewResponse {
   reply: string;
   done: boolean;
@@ -170,7 +189,15 @@ export interface ApiInterviewResponse {
     strengths: string[];
     gaps: string[];
     next: string[];
-  };
+  } | null;
+  question?: ApiQuestionMeta | null;
+  session?: ApiSessionMeta | null;
+}
+
+/** Live agent metadata surfaced by the gateway for the debug panel. */
+export interface InterviewLiveMetadata {
+  question: ApiQuestionMeta | null;
+  session: ApiSessionMeta | null;
 }
 
 /* ========================================

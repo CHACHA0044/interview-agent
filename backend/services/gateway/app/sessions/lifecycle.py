@@ -52,7 +52,7 @@ class SessionLifecycle:
         result = await self._agent.start(session_id, candidate)
         self._apply_turn(doc, result)
         await self._store.save(doc)
-        return self._to_response(doc, result.reply, result.feedback, result.done)
+        return self._to_response(doc, result, result.feedback)
 
     async def next(
         self, session_id: str, message: str
@@ -91,10 +91,10 @@ class SessionLifecycle:
             doc.finalFeedback = feedback
             doc.updatedAt = _utcnow()
             await self._store.save(doc)
-            return self._to_response(doc, result.reply, feedback, True)
+            return self._to_response(doc, result, feedback)
 
         await self._store.save(doc)
-        return self._to_response(doc, result.reply, None, False)
+        return self._to_response(doc, result, None)
 
     def _apply_turn(self, doc: SessionDoc, result) -> None:
         """Copy safe agent outputs into the session document."""
@@ -109,7 +109,11 @@ class SessionLifecycle:
         doc.updatedAt = _utcnow()
 
     @staticmethod
-    def _to_response(
-        doc: SessionDoc, reply: str, feedback, done: bool
-    ) -> InterviewResponse:
-        return InterviewResponse(reply=reply, done=done, feedback=feedback)
+    def _to_response(doc: SessionDoc, result, feedback) -> InterviewResponse:
+        return InterviewResponse(
+            reply=result.reply,
+            done=result.done,
+            feedback=feedback,
+            question=result.question.model_dump() if result.question else None,
+            session=result.sessionView.model_dump(),
+        )
