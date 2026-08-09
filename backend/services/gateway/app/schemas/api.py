@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class CandidateMember(BaseModel):
@@ -40,10 +40,56 @@ class Candidate(BaseModel):
     signals: CandidateSignals | None = None
 
 
+_FLOOR_CLAMP = {
+    "minQuestions": (8, 12),
+    "minCurriculumDays": (3, 5),
+    "followupBudget": (2, 6),
+    "followupMaxPerQuestion": (1, 3),
+}
+
+
+class InterviewConfig(BaseModel):
+    """Optional per-interview floor overrides forwarded from the frontend Settings.
+
+    Values outside the allowed range are silently clamped so stale/edge-case
+    persisted settings never break the request.
+    """
+
+    minQuestions: int = 8
+    minCurriculumDays: int = 4
+    followupBudget: int = 4
+    followupMaxPerQuestion: int = 2
+
+    @field_validator("minQuestions")
+    @classmethod
+    def _clamp_min_questions(cls, v: int) -> int:
+        lo, hi = _FLOOR_CLAMP["minQuestions"]
+        return max(lo, min(hi, v))
+
+    @field_validator("minCurriculumDays")
+    @classmethod
+    def _clamp_min_curriculum_days(cls, v: int) -> int:
+        lo, hi = _FLOOR_CLAMP["minCurriculumDays"]
+        return max(lo, min(hi, v))
+
+    @field_validator("followupBudget")
+    @classmethod
+    def _clamp_followup_budget(cls, v: int) -> int:
+        lo, hi = _FLOOR_CLAMP["followupBudget"]
+        return max(lo, min(hi, v))
+
+    @field_validator("followupMaxPerQuestion")
+    @classmethod
+    def _clamp_followup_max(cls, v: int) -> int:
+        lo, hi = _FLOOR_CLAMP["followupMaxPerQuestion"]
+        return max(lo, min(hi, v))
+
+
 class InterviewRequest(BaseModel):
     sessionId: str = Field(min_length=1)
     candidate: Optional[Candidate] = None
     message: Optional[str] = None
+    interviewConfig: Optional[InterviewConfig] = None
 
     @model_validator(mode="after")
     def _exactly_one(self) -> "InterviewRequest":

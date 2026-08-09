@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Settings, Server, Save, Activity, AlertTriangle, Trash2, Bug } from "lucide-react";
+import { Settings, Server, Save, Activity, AlertTriangle, Trash2, Bug, Sliders } from "lucide-react";
 import { Button, Input, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { toast } from "sonner";
@@ -23,12 +23,26 @@ export function SettingsPage() {
   const [apiEndpoint, setApiEndpoint] = useState(settings.apiEndpoint);
   const [requestTimeoutMs, setRequestTimeoutMs] = useState(settings.requestTimeoutMs);
   const [maxRetries, setMaxRetries] = useState(settings.maxRetries);
-  const showInternalMetadata = settings.showInternalMetadata;
 
+  // Tunable Interview Floors
+  const [minQuestions, setMinQuestions] = useState(settings.minQuestions);
+  const [minCurriculumDays, setMinCurriculumDays] = useState(settings.minCurriculumDays);
+  const [followupBudget, setFollowupBudget] = useState(settings.followupBudget);
+  const [followupMaxPerQuestion, setFollowupMaxPerQuestion] = useState(settings.followupMaxPerQuestion);
+
+  const showInternalMetadata = settings.showInternalMetadata;
   const health = useGatewayHealth();
 
   const handleSave = () => {
-    settings.saveConfig({ apiEndpoint, requestTimeoutMs, maxRetries });
+    settings.saveConfig({
+      apiEndpoint,
+      requestTimeoutMs,
+      maxRetries,
+      minQuestions: Math.max(8, Math.min(12, minQuestions)),
+      minCurriculumDays: Math.max(3, Math.min(5, minCurriculumDays)),
+      followupBudget: Math.max(2, Math.min(6, followupBudget)),
+      followupMaxPerQuestion: Math.max(1, Math.min(3, followupMaxPerQuestion)),
+    });
     toast.success("Settings updated successfully");
   };
 
@@ -57,7 +71,7 @@ export function SettingsPage() {
               </Badge>
             }
             title="System Settings"
-            description="Configure runtime behavior, backend integration mode, and interview execution endpoints."
+            description="Configure runtime behavior, interview execution floors, and backend integration endpoints."
           />
 
           <Surface padding="lg" className="stack stack-md">
@@ -101,43 +115,135 @@ export function SettingsPage() {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <label htmlFor="timeout" className="text-xs font-medium text-[#A3A3A3] block">
-                  Request Timeout (ms)
-                </label>
-                <Input
-                  id="timeout"
-                  type="number"
-                  min={1000}
-                  step={500}
-                  value={requestTimeoutMs}
-                  onChange={(e) => setRequestTimeoutMs(Math.max(1000, Number(e.target.value) || 0))}
-                />
-                <p className="text-[10px] text-[#737373]">Abort live gateway calls that exceed this window.</p>
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label htmlFor="timeout" className="text-xs font-medium text-[#A3A3A3] block">
+                    Request Timeout (ms)
+                  </label>
+                  <Input
+                    id="timeout"
+                    type="number"
+                    min={1000}
+                    step={500}
+                    value={requestTimeoutMs}
+                    onChange={(e) => setRequestTimeoutMs(Math.max(1000, Number(e.target.value) || 0))}
+                  />
+                  <p className="text-[10px] text-[#737373]">Abort live gateway calls that exceed this window.</p>
+                </div>
 
-              <div className="space-y-2">
-                <label htmlFor="retries" className="text-xs font-medium text-[#A3A3A3] block">
-                  Max Request Retries
-                </label>
-                <Input
-                  id="retries"
-                  type="number"
-                  min={0}
-                  max={5}
-                  step={1}
-                  value={maxRetries}
-                  onChange={(e) => setMaxRetries(Math.max(0, Math.min(5, Math.round(Number(e.target.value) || 0))))}
-                />
-                <p className="text-[10px] text-[#737373]">
-                  Automatic retries for transient failures (network, 5xx, 429). Client errors are never retried.
-                </p>
+                <div className="space-y-2">
+                  <label htmlFor="retries" className="text-xs font-medium text-[#A3A3A3] block">
+                    Max Request Retries
+                  </label>
+                  <Input
+                    id="retries"
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={1}
+                    value={maxRetries}
+                    onChange={(e) => setMaxRetries(Math.max(0, Math.min(5, Math.round(Number(e.target.value) || 0))))}
+                  />
+                  <p className="text-[10px] text-[#737373]">
+                    Automatic retries for transient failures (network, 5xx, 429).
+                  </p>
+                </div>
               </div>
             </Stack>
 
             <div className="flex justify-end pt-2">
               <Button onClick={handleSave} icon={<Save className="h-4 w-4" />}>
                 Save Configuration
+              </Button>
+            </div>
+          </Surface>
+
+          <Surface padding="lg" className="stack stack-md">
+            <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
+              <Sliders className="h-5 w-5 text-[#D4AF37]" />
+              <h2 className="text-base font-bold text-white">Configurable Interview Floors</h2>
+            </div>
+            <p className="text-xs text-[#A3A3A3]">
+              Tune execution parameters within verified bounds. Defaults match production standards.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+              <div className="p-4 rounded-xl bg-[#171717] border border-[#262626] space-y-2">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="min-q" className="text-xs font-semibold text-white block">
+                    Minimum Questions
+                  </label>
+                  <span className="text-xs font-mono font-bold text-[#D4AF37]">{minQuestions}</span>
+                </div>
+                <Input
+                  id="min-q"
+                  type="number"
+                  min={8}
+                  max={12}
+                  value={minQuestions}
+                  onChange={(e) => setMinQuestions(Number(e.target.value))}
+                />
+                <p className="text-[10px] text-[#737373]">Range: 8–12. Hard minimum floor before interview completion.</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#171717] border border-[#262626] space-y-2">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="min-days" className="text-xs font-semibold text-white block">
+                    Minimum Curriculum Days
+                  </label>
+                  <span className="text-xs font-mono font-bold text-[#D4AF37]">{minCurriculumDays}</span>
+                </div>
+                <Input
+                  id="min-days"
+                  type="number"
+                  min={3}
+                  max={5}
+                  value={minCurriculumDays}
+                  onChange={(e) => setMinCurriculumDays(Number(e.target.value))}
+                />
+                <p className="text-[10px] text-[#737373]">Range: 3–5. Minimum distinct curriculum days required.</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#171717] border border-[#262626] space-y-2">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="followup-budget" className="text-xs font-semibold text-white block">
+                    Follow-up Budget
+                  </label>
+                  <span className="text-xs font-mono font-bold text-[#D4AF37]">{followupBudget}</span>
+                </div>
+                <Input
+                  id="followup-budget"
+                  type="number"
+                  min={2}
+                  max={6}
+                  value={followupBudget}
+                  onChange={(e) => setFollowupBudget(Number(e.target.value))}
+                />
+                <p className="text-[10px] text-[#737373]">Range: 2–6. Maximum total follow-ups allowed across session.</p>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#171717] border border-[#262626] space-y-2">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="max-per-q" className="text-xs font-semibold text-white block">
+                    Max Follow-ups per Question
+                  </label>
+                  <span className="text-xs font-mono font-bold text-[#D4AF37]">{followupMaxPerQuestion}</span>
+                </div>
+                <Input
+                  id="max-per-q"
+                  type="number"
+                  min={1}
+                  max={3}
+                  value={followupMaxPerQuestion}
+                  onChange={(e) => setFollowupMaxPerQuestion(Number(e.target.value))}
+                />
+                <p className="text-[10px] text-[#737373]">Range: 1–3. Max probing attempts on a single primary question.</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleSave} icon={<Save className="h-4 w-4" />}>
+                Save Floors
               </Button>
             </div>
           </Surface>
@@ -161,6 +267,16 @@ export function SettingsPage() {
                   </Badge>
                 </div>
                 <p className="text-[11px] text-[#737373] leading-relaxed">{visual.text}</p>
+                {health.lastError ? (
+                  <p className="text-[11px] text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/20 p-2.5 rounded-lg font-mono leading-relaxed">
+                    Diagnostic: {health.lastError}
+                    {health.status === "offline" && (
+                      <span className="block text-[10px] text-[#F87171] mt-1 font-sans">
+                        Note: If the backend is running on Render, ensure FRONTEND_ORIGINS on Render includes your Vercel frontend URL to allow cross-origin health checks.
+                      </span>
+                    )}
+                  </p>
+                ) : null}
                 <p className="text-[10px] font-mono text-[#525252]">
                   session store: {health.storeType}
                   {health.ttlSeconds ? ` · session TTL: ${Math.round(health.ttlSeconds / 60)}m` : ""}

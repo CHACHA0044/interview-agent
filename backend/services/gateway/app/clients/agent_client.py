@@ -18,8 +18,17 @@ class AgentClient:
     def __init__(self, http: InternalHttpClient) -> None:
         self._http = http
 
-    async def start(self, session_id: str, candidate: Candidate) -> AgentTurnResponse:
-        payload = AgentStartRequest(sessionId=session_id, candidate=candidate)
+    async def start(
+        self,
+        session_id: str,
+        candidate: Candidate,
+        interview_config: dict | None = None,
+    ) -> AgentTurnResponse:
+        payload = AgentStartRequest(
+            sessionId=session_id,
+            candidate=candidate,
+            interviewConfig=interview_config,
+        )
         data = await self._http.post_json(
             "/internal/interview/start", payload.model_dump(mode="json")
         )

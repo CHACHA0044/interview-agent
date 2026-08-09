@@ -75,21 +75,21 @@ def generate_structured_output(
             return model_class.model_validate(parsed_data)
             
         except json.JSONDecodeError as e:
-            logger.warning(f"Attempt {attempts + 1}: LLM returned malformed JSON: {e}")
+            logger.warning(f"[AI] structured_output_retry attempt={attempts + 1} model={model_class.__name__} reason=malformed_json error={e}")
             last_exception = e
             
         except ValidationError as e:
-            logger.warning(f"Attempt {attempts + 1}: LLM JSON failed schema validation: {e}")
+            logger.warning(f"[AI] structured_output_retry attempt={attempts + 1} model={model_class.__name__} reason=validation_error error={e}")
             last_exception = e
             
         except Exception as e:
-            logger.error(f"Attempt {attempts + 1}: LLM provider or network error: {e}")
+            logger.error(f"[AI] structured_output_retry attempt={attempts + 1} model={model_class.__name__} reason=provider_error error={e}")
             last_exception = e
             # Do not retry immediately on network failure unless we want to implement backoff, 
             # but for this utility we just catch it. If it's a critical auth error, it will be caught here.
             
         attempts += 1
         
-    logger.error(f"Failed to generate valid structured output after {max_retries + 1} attempts. Returning fallback.")
+    logger.error(f"[AI] structured_output_failed model={model_class.__name__} max_retries={max_retries}. Returning fallback.")
     fallback_method = getattr(model_class, "fallback")
     return fallback_method()

@@ -58,32 +58,34 @@ class GroqProvider(ChatProvider):
         """
         # Attempt 1: Primary Groq model (e.g., llama-3.3-70b-versatile)
         try:
-            return self._call_groq(
+            res = self._call_groq(
                 model=self.model,
                 messages=messages,
                 json_mode=json_mode,
                 temperature=temperature,
             )
+            logger.info(f"[AI] llm_call_success provider=groq model={self.model}")
+            return res
         except (openai.RateLimitError, openai.APIError) as e:
             logger.warning(
-                f"Groq primary model '{self.model}' hit rate limit/error: {e}. "
-                f"Failing over to secondary model '{self.fallback_model}'..."
+                f"[AI] provider_failover from={self.model} to={self.fallback_model} reason=ratelimit_or_apierror error={e}"
             )
         except Exception as e:
-            logger.error(f"Unexpected error with Groq primary model '{self.model}': {e}")
+            logger.error(f"[AI] provider_failover_error model={self.model} error={e}")
 
         # Attempt 2: Secondary Groq model (e.g., llama-3.1-8b-instant)
         try:
-            return self._call_groq(
+            res = self._call_groq(
                 model=self.fallback_model,
                 messages=messages,
                 json_mode=json_mode,
                 temperature=temperature,
             )
+            logger.info(f"[AI] llm_call_success provider=groq model={self.fallback_model}")
+            return res
         except Exception as e:
             logger.warning(
-                f"Groq secondary model '{self.fallback_model}' failed: {e}. "
-                "Failing over to deterministic FakeLLM Provider..."
+                f"[AI] provider_failover from={self.fallback_model} to=FakeLLMProvider reason=fallback_failed error={e}"
             )
 
         # Attempt 3: Deterministic FakeLLM fallback (guarantees system never crashes)

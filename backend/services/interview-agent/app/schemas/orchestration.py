@@ -95,6 +95,7 @@ class AgentTurnResponse(BaseModel):
 class AgentStartRequest(BaseModel):
     sessionId: str = Field(..., min_length=1)
     candidate: Candidate
+    interviewConfig: Optional[Dict[str, Any]] = None
 
 
 class AgentNextRequest(BaseModel):

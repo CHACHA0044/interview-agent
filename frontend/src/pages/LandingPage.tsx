@@ -188,8 +188,9 @@ export function LandingPage() {
 
   return (
     <PageTransition>
-      <Section density="relaxed">
-        <LayoutContainer size="hero" className="stack stack-lg">
+      {/* Full-viewport Hero Section */}
+      <section className="min-h-[calc(100vh-var(--nav-height))] flex items-center justify-center py-12 md:py-16">
+        <LayoutContainer size="hero" className="stack stack-lg w-full">
           <LayoutGrid gap="lg" className="items-center">
             <div className="col-span-4 md:col-span-8 xl:col-span-7 stack stack-md">
               <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
@@ -316,53 +317,87 @@ export function LandingPage() {
             </div>
           </LayoutGrid>
         </LayoutContainer>
+      </section>
+
+      {/* Scroll-Triggered Pipeline Section (below fold) */}
+      <Section className="pt-24">
+        <motion.div
+          initial={{ opacity: 0, y: 36 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <LayoutContainer size="dashboard" className="stack stack-lg">
+            <PageHeading
+              align="center"
+              eyebrow={<span className="text-xs font-mono text-[#D4AF37] uppercase tracking-widest">Multi-Agent Workflow</span>}
+              title="Adaptive Assessment Pipeline"
+              description="From context intake to targeted evaluation and executive feedback synthesis."
+            />
+
+            <LayoutGrid gap="md">
+              {[
+                ["STEP 01", "Candidate Context Intake", "Loads mission streak, repo history, and baseline signals.", "Input: Candidate ID"],
+                ["STEP 02", "Adaptive Questioning", "Generates dynamic follow-ups based on response depth.", "Engine: RAG + Curriculum"],
+                ["STEP 03", "Rubric Evaluation", "Scores response precision, grounding, and skill mastery.", "Guardrail: Zero Hallucinations"],
+                ["STEP 04", "Executive Synthesis", "Outputs topic radar metrics and targeted next steps.", "Output: PDF & Dashboard"],
+              ].map(([step, title, description, meta], idx) => (
+                <motion.div
+                  key={step}
+                  className="col-span-4 md:col-span-4 xl:col-span-3"
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.08 }}
+                >
+                  <Surface className="h-full flex flex-col justify-between" padding="md">
+                    <div className="stack stack-sm">
+                      <span className="text-xs font-mono text-[#D4AF37] font-bold">{step}</span>
+                      <h3 className="text-sm font-semibold text-white">{title}</h3>
+                      <p className="text-xs text-[#737373] leading-relaxed">{description}</p>
+                    </div>
+                    <span className="text-[10px] font-mono text-[#525252] mt-6">{meta}</span>
+                  </Surface>
+                </motion.div>
+              ))}
+            </LayoutGrid>
+          </LayoutContainer>
+        </motion.div>
       </Section>
 
+      {/* Scroll-Triggered Features Section */}
       <Section>
-        <LayoutContainer size="dashboard" className="stack stack-lg">
-          <PageHeading
-            align="center"
-            eyebrow={<span className="text-xs font-mono text-[#D4AF37] uppercase tracking-widest">Multi-Agent Workflow</span>}
-            title="Adaptive Assessment Pipeline"
-            description="From context intake to targeted evaluation and executive feedback synthesis."
-          />
+        <motion.div
+          initial={{ opacity: 0, y: 36 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <LayoutContainer size="dashboard" className="stack stack-lg">
+            <PageHeading
+              align="center"
+              title="Engineered for Rigorous Assessment"
+              description="Every system component is designed to deliver unbiased, highly detailed technical evaluations. Click a card to expand its engineering detail."
+            />
 
-          <LayoutGrid gap="md">
-            {[
-              ["STEP 01", "Candidate Context Intake", "Loads mission streak, repo history, and baseline signals.", "Input: Candidate ID"],
-              ["STEP 02", "Adaptive Questioning", "Generates dynamic follow-ups based on response depth.", "Engine: RAG + Curriculum"],
-              ["STEP 03", "Rubric Evaluation", "Scores response precision, grounding, and skill mastery.", "Guardrail: Zero Hallucinations"],
-              ["STEP 04", "Executive Synthesis", "Outputs topic radar metrics and targeted next steps.", "Output: PDF & Dashboard"],
-            ].map(([step, title, description, meta]) => (
-              <Surface key={step} className="col-span-4 md:col-span-4 xl:col-span-3 h-full flex flex-col justify-between" padding="md">
-                <div className="stack stack-sm">
-                  <span className="text-xs font-mono text-[#D4AF37] font-bold">{step}</span>
-                  <h3 className="text-sm font-semibold text-white">{title}</h3>
-                  <p className="text-xs text-[#737373] leading-relaxed">{description}</p>
-                </div>
-                <span className="text-[10px] font-mono text-[#525252] mt-6">{meta}</span>
-              </Surface>
-            ))}
-          </LayoutGrid>
-        </LayoutContainer>
-      </Section>
+            <LayoutGrid gap="md">
+              {FEATURES.map((feature, idx) => (
+                <motion.div
+                  key={feature.title}
+                  className="col-span-4 md:col-span-4 xl:col-span-4"
+                  initial={{ opacity: 0, y: 24 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.5, delay: idx * 0.06 }}
+                >
+                  <FeatureCard feature={feature} />
+                </motion.div>
+              ))}
+            </LayoutGrid>
 
-      <Section>
-        <LayoutContainer size="dashboard" className="stack stack-lg">
-          <PageHeading
-            align="center"
-            title="Engineered for Rigorous Assessment"
-            description="Every system component is designed to deliver unbiased, highly detailed technical evaluations. Click a card to expand its engineering detail."
-          />
-
-          <LayoutGrid gap="md">
-            {FEATURES.map((feature) => (
-              <FeatureCard key={feature.title} feature={feature} />
-            ))}
-          </LayoutGrid>
-
-          <p className="text-xs text-[#737373]">{APP_NAME} preserves application behavior while rebuilding layout architecture for responsive intent.</p>
-        </LayoutContainer>
+            <p className="text-xs text-[#737373]">{APP_NAME} preserves application behavior while rebuilding layout architecture for responsive intent.</p>
+          </LayoutContainer>
+        </motion.div>
       </Section>
     </PageTransition>
   );

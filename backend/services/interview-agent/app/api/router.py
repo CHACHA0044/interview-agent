@@ -6,6 +6,7 @@ Responsibilities:
 - Handles HTTP requests and delegates to the Orchestrator.
 - Maps domain ValueErrors to HTTP 400 Bad Request.
 - Exposes start, next, complete, and health endpoints.
+- Extracts optional interviewConfig overrides (min_questions etc.) from start requests.
 
 Connected Files:
 - app/schemas/orchestration.py
@@ -33,6 +34,25 @@ def _get_orchestrator(request: Request):
 async def start_interview(payload: AgentStartRequest, request: Request):
     orchestrator = _get_orchestrator(request)
     try:
+        # Apply per-request floor overrides from frontend Settings when provided.
+        config = payload.interviewConfig or {}
+        if config:
+            from app.core.config import settings as _cfg
+            # Clamp each value to the server-enforced safe range.
+            _CLAMP = {
+                "minQuestions": (8, 12),
+                "minCurriculumDays": (3, 5),
+                "followupBudget": (2, 6),
+                "followupMaxPerQuestion": (1, 3),
+            }
+            def _clamp(key, default):
+                lo, hi = _CLAMP[key]
+                return max(lo, min(hi, int(config.get(key, default))))
+
+            orchestrator.min_questions = _clamp("minQuestions", orchestrator.min_questions)
+            orchestrator.min_curriculum_days = _clamp("minCurriculumDays", orchestrator.min_curriculum_days)
+            orchestrator.followup_budget = _clamp("followupBudget", orchestrator.followup_budget)
+            orchestrator.followup_max_per_question = _clamp("followupMaxPerQuestion", orchestrator.followup_max_per_question)
         return await orchestrator.start(payload.sessionId, payload.candidate)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

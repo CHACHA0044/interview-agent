@@ -26,7 +26,9 @@ async def interview(
     lifecycle: SessionLifecycle = Depends(_lifecycle),
 ) -> InterviewResponse:
     if body.candidate is not None:
-        return await lifecycle.start(body.sessionId, body.candidate)
+        # Forward optional per-interview floor config from the frontend Settings.
+        config_dict = body.interviewConfig.model_dump() if body.interviewConfig else None
+        return await lifecycle.start(body.sessionId, body.candidate, interview_config=config_dict)
     if body.message is None:
         raise ValueError("message required for turn")
     return await lifecycle.next(body.sessionId, body.message)

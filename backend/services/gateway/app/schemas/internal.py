@@ -41,6 +41,7 @@ class SessionView(BaseModel):
 class AgentStartRequest(BaseModel):
     sessionId: str
     candidate: Candidate
+    interviewConfig: Optional[dict[str, Any]] = None
 
 
 class AgentNextRequest(BaseModel):

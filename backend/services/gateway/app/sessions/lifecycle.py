@@ -7,13 +7,16 @@ sessionView fields into the document (backend.md §10.2).
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timezone
+from typing import Any, Dict, Optional
 
 from app.core.errors import (
     SessionCompletedError,
     SessionExistsError,
     SessionNotFoundError,
 )
+from app.core.logging_utils import gw_log
 from app.schemas.api import Candidate, InterviewRequest, InterviewResponse
 from app.schemas.internal import ConversationItem, SessionDoc
 
@@ -24,6 +27,12 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _store_kind(store) -> str:
+    """Return 'redis' or 'in-memory' depending on the active session store."""
+    from app.sessions.redis_store import RedisSessionStore
+    return "redis" if isinstance(store, RedisSessionStore) else "in-memory"
+
+
 class SessionLifecycle:
     """Coordinates session storage with the interview-agent client."""
 
@@ -32,8 +41,19 @@ class SessionLifecycle:
         self._agent = agent_client
 
     async def start(
-        self, session_id: str, candidate: Candidate
+        self,
+        session_id: str,
+        candidate: Candidate,
+        interview_config: Optional[Dict[str, Any]] = None,
     ) -> InterviewResponse:
+        store_kind = _store_kind(self._store)
+        gw_log(
+            "request_start",
+            session_id=session_id,
+            request_type="start",
+            candidate_id=candidate.member.id,
+            store=store_kind,
+        )
         existing = await self._store.get(session_id)
         if existing is not None:
             raise SessionExistsError(
@@ -49,9 +69,21 @@ class SessionLifecycle:
             updatedAt=now,
             candidate=candidate,
         )
-        result = await self._agent.start(session_id, candidate)
+        t0 = time.monotonic()
+        result = await self._agent.start(session_id, candidate, interview_config=interview_config)
+        latency_ms = round((time.monotonic() - t0) * 1000)
         self._apply_turn(doc, result)
         await self._store.save(doc)
+
+        gw_log(
+            "request_done",
+            session_id=session_id,
+            request_type="start",
+            store=store_kind,
+            agent_latency_ms=latency_ms,
+            status=200,
+            done=result.done,
+        )
         return self._to_response(doc, result, result.feedback)
 
     async def next(
@@ -69,9 +101,21 @@ class SessionLifecycle:
                 detail={"sessionId": session_id},
             )
 
+        store_kind = _store_kind(self._store)
+        turn_number = len(doc.conversation) // 2 + 1  # rough turn count
+        gw_log(
+            "request_start",
+            session_id=session_id,
+            request_type="turn",
+            turn=turn_number,
+            store=store_kind,
+            answer_len=len(message),
+        )
+
         doc.conversation.append(
             ConversationItem(role="candidate", content=message)
         )
+        t0 = time.monotonic()
         result = await self._agent.next(
             session_id,
             doc.candidate,
@@ -80,6 +124,7 @@ class SessionLifecycle:
             doc.currentQuestion,
             message,
         )
+        latency_ms = round((time.monotonic() - t0) * 1000)
         self._apply_turn(doc, result)
 
         if result.done:
@@ -91,9 +136,27 @@ class SessionLifecycle:
             doc.finalFeedback = feedback
             doc.updatedAt = _utcnow()
             await self._store.save(doc)
+            gw_log(
+                "request_done",
+                session_id=session_id,
+                request_type="turn",
+                store=store_kind,
+                agent_latency_ms=latency_ms,
+                status=200,
+                done=True,
+            )
             return self._to_response(doc, result, feedback)
 
         await self._store.save(doc)
+        gw_log(
+            "request_done",
+            session_id=session_id,
+            request_type="turn",
+            store=store_kind,
+            agent_latency_ms=latency_ms,
+            status=200,
+            done=False,
+        )
         return self._to_response(doc, result, None)
 
     def _apply_turn(self, doc: SessionDoc, result) -> None:

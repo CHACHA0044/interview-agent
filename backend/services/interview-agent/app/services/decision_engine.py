@@ -5,7 +5,8 @@ Executes the post-evaluation state transition logic for the interview.
 Responsibilities:
 - Determines whether to FOLLOW_UP, move to NEXT_QUESTION, or FINISH.
 - Enforces strict limits on follow-up loops to prevent the AI from stalling.
-- Enforces the hard floor of >= 8 questions and >= 4 days before allowing FINISH.
+- Enforces the configurable hard floor of >= min_questions and >= min_curriculum_days
+  before allowing FINISH (defaults: 8 questions / 4 days, tunable via Settings).
 - Generates the FollowUpStrategy payload if FOLLOW_UP is selected.
 
 Connected Files:
@@ -39,11 +40,17 @@ def evaluate_next_step(
     distinct_days_completed: int,
     remaining_plan_slots: int,
     non_answer_kind: str = "ok",
-    repeats_prior_question: bool = False
+    repeats_prior_question: bool = False,
+    min_questions: int = 8,
+    min_curriculum_days: int = 4,
 ) -> Tuple[FollowUpDecision, Optional[FollowUpStrategy]]:
     """
     Evaluates the candidate's answer and determines the next logical step 
     for the interview orchestration state machine.
+
+    Args:
+        min_questions: Hard floor for total questions before FINISH is allowed.
+        min_curriculum_days: Hard floor for distinct curriculum days before FINISH is allowed.
     """
 
     # RULE 0: Loop Safeguard
@@ -92,9 +99,9 @@ def evaluate_next_step(
             return FollowUpDecision.FOLLOW_UP, strategy
 
     # RULE 2: Evaluate Completion Trigger
-    # Hard floor: Must have asked >= 8 questions across >= 4 days.
+    # Hard floor: Must have asked >= min_questions across >= min_curriculum_days.
     # Note: question_count includes the current question we just evaluated.
-    meets_hard_floor = (question_count >= 8) and (distinct_days_completed >= 4)
+    meets_hard_floor = (question_count >= min_questions) and (distinct_days_completed >= min_curriculum_days)
     
     # We attempt to finish if there are no more planned questions.
     if remaining_plan_slots <= 0:

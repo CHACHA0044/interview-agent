@@ -16,6 +16,7 @@ Connected Files:
 - app/services/orchestrator.py
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -25,6 +26,8 @@ from app.core.config import settings
 from app.services.ai_client import AIIntelligenceClient
 from app.services.curriculum_loader import CurriculumLoader
 from app.services.orchestrator import InterviewOrchestrator
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -40,6 +43,16 @@ async def lifespan(app: FastAPI):
         ai_client,
         followup_budget=settings.followup_budget,
         followup_max_per_question=settings.followup_max_per_question,
+        min_questions=settings.min_questions,
+        min_curriculum_days=settings.min_curriculum_days,
+    )
+    logger.info(
+        "[AGENT] service started — floors: min_questions=%d min_curriculum_days=%d "
+        "followup_budget=%d followup_max_per_question=%d",
+        settings.min_questions,
+        settings.min_curriculum_days,
+        settings.followup_budget,
+        settings.followup_max_per_question,
     )
     yield
 

@@ -17,7 +17,9 @@ Connected Files:
 - app/llm/prompts/builders.py
 """
 
+import json
 import logging
+import time
 from typing import Any, Dict, List
 
 from qdrant_client import QdrantClient
@@ -31,6 +33,13 @@ from app.llm.prompts.builders import build_question_prompt
 from app.rag.retriever import retrieve, assemble_context
 
 logger = logging.getLogger(__name__)
+_AI_PREFIX = "[AI]"
+
+
+def _ai_log(event: str, **fields: Any) -> None:
+    payload: dict[str, Any] = {"event": event, "ts": round(time.time(), 3)}
+    payload.update(fields)
+    logger.info("%s %s", _AI_PREFIX, json.dumps(payload, default=str))
 
 
 def _fake_question(
@@ -85,6 +94,9 @@ def generate_interview_question(
     """
     Generates a technical interview question grounded in the RAG curriculum context.
     """
+    provider_name = type(llm_provider).__name__
+    is_fake = isinstance(llm_provider, FakeLLMProvider)
+
     logger.info(f"Generating question for topic: {strategy.topic} (Day {strategy.day})")
 
     # 1. Prepare Semantic Search Query
@@ -98,12 +110,24 @@ def generate_interview_question(
         filters={"day": strategy.day}
     )
 
+    rag_source = retrieval_result.source or ("fallback" if is_fake else "qdrant")
+    _ai_log(
+        "question_generation_start",
+        provider=provider_name,
+        is_fake=is_fake,
+        topic=strategy.topic,
+        day=strategy.day,
+        rag_source=rag_source,
+        rag_chunks=len(retrieval_result.chunks),
+    )
+
     if retrieval_result.warnings:
         for w in retrieval_result.warnings:
             logger.warning(f"Retrieval warning: {w}")
 
     # 3. Fake mode: deterministic question
-    if isinstance(llm_provider, FakeLLMProvider):
+    if is_fake:
+        _ai_log("question_generated", provider=provider_name, method="fake_deterministic", topic=strategy.topic)
         return _fake_question(strategy, candidate_context, retrieval_result.chunks)
 
     curriculum_string = assemble_context(retrieval_result)
@@ -142,7 +166,9 @@ def generate_interview_question(
         # Ensure the day and grounding context are always populated.
         generated_question.day = strategy.day
         generated_question.retrievedContext = retrieval_result.chunks
+        _ai_log("question_generated", provider=provider_name, method="llm", topic=strategy.topic, day=strategy.day)
         return generated_question
     except Exception as e:
         logger.error(f"Structured output completely failed: {e}")
+        _ai_log("question_fallback", provider=provider_name, reason=str(e), topic=strategy.topic)
         return GeneratedQuestion.fallback(strategy=strategy)

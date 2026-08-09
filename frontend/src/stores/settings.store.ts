@@ -5,28 +5,18 @@ File:
 stores/settings.store.ts
 
 Purpose:
-Zustand store for runtime backend configuration.
+Zustand store for runtime backend configuration and interview floors.
 
 Responsibilities:
-- Persists the live gateway endpoint and request timeout
-- Provides the default gateway endpoint from VITE_API_BASE_URL
+- Persists the live gateway endpoint, request timeout, and retries
+- Persists tunable interview floors (minQuestions, minCurriculumDays, followupBudget, followupMaxPerQuestion)
+- Provides default values from env and technical spec
 - Consumed by the Settings page and the interview service layer
 
 Connected Files:
 - src/pages/SettingsPage.tsx (consumer)
 - src/services/interview.service.ts (consumer)
 - src/types/index.ts
-
-Depends On:
-- zustand (persist middleware -> localStorage)
-
-Notes:
-Values are hydrated from localStorage on store creation, so saved
-configuration is honored immediately on reload. Saving is explicit:
-nothing is persisted until SettingsPage calls saveConfig.
-
-Mock services were removed — the backend gateway is the only data source,
-so this store no longer exposes a mock toggle or simulated latency.
 
 ========================================================
 */
@@ -40,7 +30,19 @@ const DEFAULT_API_BASE_URL: string =
 
 export const DEFAULT_API_ENDPOINT = `${DEFAULT_API_BASE_URL}/api/interview`;
 
-interface SettingsState {
+export const DEFAULT_MIN_QUESTIONS = 8;
+export const DEFAULT_MIN_CURRICULUM_DAYS = 4;
+export const DEFAULT_FOLLOWUP_BUDGET = 4;
+export const DEFAULT_FOLLOWUP_MAX_PER_QUESTION = 2;
+
+export interface InterviewFloorSettings {
+  minQuestions: number;
+  minCurriculumDays: number;
+  followupBudget: number;
+  followupMaxPerQuestion: number;
+}
+
+interface SettingsState extends InterviewFloorSettings {
   /** Full URL of the gateway /api/interview endpoint. */
   apiEndpoint: string;
   /** Timeout (ms) for live gateway requests. */
@@ -54,6 +56,10 @@ interface SettingsState {
     apiEndpoint: string;
     requestTimeoutMs: number;
     maxRetries: number;
+    minQuestions: number;
+    minCurriculumDays: number;
+    followupBudget: number;
+    followupMaxPerQuestion: number;
   }) => void;
   /** Toggle the interview debug metadata panel. */
   setShowInternalMetadata: (show: boolean) => void;
@@ -69,24 +75,29 @@ export const useSettingsStore = create<SettingsState>()(
       requestTimeoutMs: DEFAULT_REQUEST_TIMEOUT_MS,
       maxRetries: DEFAULT_MAX_RETRIES,
       showInternalMetadata: false,
+      minQuestions: DEFAULT_MIN_QUESTIONS,
+      minCurriculumDays: DEFAULT_MIN_CURRICULUM_DAYS,
+      followupBudget: DEFAULT_FOLLOWUP_BUDGET,
+      followupMaxPerQuestion: DEFAULT_FOLLOWUP_MAX_PER_QUESTION,
       saveConfig: (config) => set(config),
       setShowInternalMetadata: (show) => set({ showInternalMetadata: show }),
     }),
     {
       name: "interview-agent-settings",
-      version: 3,
+      version: 4,
       migrate: (persistedState) => {
         const raw = persistedState as Record<string, unknown>;
-        // v1 persisted mock-era fields (useMockService, simulatedLatencyMs)
-        // that no longer exist; drop them so the store re-seeds live defaults.
         const { useMockService: _useMockService, simulatedLatencyMs: _simulatedLatencyMs, ...rest } = raw;
-        // v2 -> v3 seeds the newly added runtime fields with their defaults.
         return {
           ...rest,
           apiEndpoint: (rest.apiEndpoint as string | undefined) ?? DEFAULT_API_ENDPOINT,
           requestTimeoutMs: (rest.requestTimeoutMs as number | undefined) ?? DEFAULT_REQUEST_TIMEOUT_MS,
           maxRetries: (rest.maxRetries as number | undefined) ?? DEFAULT_MAX_RETRIES,
           showInternalMetadata: (rest.showInternalMetadata as boolean | undefined) ?? false,
+          minQuestions: (rest.minQuestions as number | undefined) ?? DEFAULT_MIN_QUESTIONS,
+          minCurriculumDays: (rest.minCurriculumDays as number | undefined) ?? DEFAULT_MIN_CURRICULUM_DAYS,
+          followupBudget: (rest.followupBudget as number | undefined) ?? DEFAULT_FOLLOWUP_BUDGET,
+          followupMaxPerQuestion: (rest.followupMaxPerQuestion as number | undefined) ?? DEFAULT_FOLLOWUP_MAX_PER_QUESTION,
         } as unknown as SettingsState;
       },
       storage: createJSONStorage(() => localStorage),

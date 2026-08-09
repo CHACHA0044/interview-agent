@@ -16,7 +16,9 @@ Connected Files:
 - app/llm/prompts/builders.py
 """
 
+import json
 import logging
+import time
 from typing import Any, Dict
 
 from qdrant_client import QdrantClient
@@ -31,6 +33,13 @@ from app.llm.prompts.builders import build_evaluation_prompt
 from app.rag.retriever import retrieve, assemble_context
 
 logger = logging.getLogger(__name__)
+_AI_PREFIX = "[AI]"
+
+
+def _ai_log(event: str, **fields: Any) -> None:
+    payload: dict[str, Any] = {"event": event, "ts": round(time.time(), 3)}
+    payload.update(fields)
+    logger.info("%s %s", _AI_PREFIX, json.dumps(payload, default=str))
 
 
 def _fake_evaluation(
@@ -86,18 +95,23 @@ def evaluate_answer(
     """
     Evaluates a candidate's answer against the rubric using LLM reasoning.
     """
+    provider_name = type(llm_provider).__name__
+    is_fake = isinstance(llm_provider, FakeLLMProvider)
+
     logger.info(f"Evaluating answer for question topic: {question_payload.topic}")
 
     # 1. Fast-path empty answers
     if not candidate_answer or not candidate_answer.strip():
         logger.info("Candidate answer is empty. Returning deterministic 0.0 evaluation.")
+        _ai_log("evaluation_empty", provider=provider_name, topic=question_payload.topic)
         fallback_eval = EvaluationOutput.fallback()
         fallback_eval.notes = "Candidate provided an empty answer."
         fallback_eval.gaps = ["Candidate provided no answer or remained silent."]
         return fallback_eval
 
     # 2. Fake mode: deterministic heuristic evaluation
-    if isinstance(llm_provider, FakeLLMProvider):
+    if is_fake:
+        _ai_log("evaluation_done", provider=provider_name, method="fake_heuristic", topic=question_payload.topic)
         return _fake_evaluation(question_payload, candidate_answer, candidate_context)
 
     # 3. Prepare Semantic Search Query
@@ -142,7 +156,9 @@ def evaluate_answer(
             model_class=EvaluationOutput,
             max_retries=2
         )
+        _ai_log("evaluation_done", provider=provider_name, method="llm", topic=question_payload.topic, score=evaluation.score)
         return evaluation
     except Exception as e:
         logger.error(f"Structured output completely failed during evaluation: {e}")
+        _ai_log("evaluation_fallback", provider=provider_name, reason=str(e), topic=question_payload.topic)
         return EvaluationOutput.fallback()

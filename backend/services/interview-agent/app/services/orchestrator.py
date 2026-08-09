@@ -8,6 +8,7 @@ Responsibilities:
 - Talks to ai-intelligence over its internal contract (backend/shared/schemas/ai_api.json).
 - Maintains strict stateless execution: all state travels in agentState.
 - Provides start / next / complete entry points and deterministic AI fallbacks.
+- Emits structured [AGENT] log lines for every decision, fallback, and evaluation.
 
 Connected Files:
 - app/schemas/orchestration.py
@@ -17,6 +18,7 @@ Connected Files:
 - app/services/*.py (deterministic engine)
 """
 
+import json
 import logging
 import re
 import time
@@ -70,6 +72,15 @@ from app.services.strategy_builder import build_question_strategy
 
 logger = logging.getLogger(__name__)
 
+_AGENT_PREFIX = "[AGENT]"
+
+
+def _agent_log(event: str, **fields: Any) -> None:
+    """Emit a single structured [AGENT] log line (non-blocking, pure stdlib)."""
+    payload: dict[str, Any] = {"event": event, "ts": round(time.time(), 3)}
+    payload.update(fields)
+    logger.info("%s %s", _AGENT_PREFIX, json.dumps(payload, default=str))
+
 
 class InterviewOrchestrator:
     """Stateless orchestrator exposing the master agent contract."""
@@ -80,11 +91,15 @@ class InterviewOrchestrator:
         ai_client: AIIntelligenceClient,
         followup_budget: int = 4,
         followup_max_per_question: int = 2,
+        min_questions: int = 8,
+        min_curriculum_days: int = 4,
     ) -> None:
         self.curriculum_loader = curriculum_loader
         self.ai_client = ai_client
         self.followup_budget = followup_budget
         self.followup_max_per_question = followup_max_per_question
+        self.min_questions = min_questions
+        self.min_curriculum_days = min_curriculum_days
 
     # ------------------------------------------------------------------ start
 
@@ -124,6 +139,18 @@ class InterviewOrchestrator:
         if current is None:
             raise ValueError("FATAL: Interview plan produced no question.")
         strategy = build_question_strategy(current, state.candidate_context)
+
+        _agent_log(
+            "interview_start",
+            session_id=session_id,
+            candidate_id=raw_candidate.get("member", {}).get("id", ""),
+            starting_difficulty=starting_diff.value if hasattr(starting_diff, "value") else str(starting_diff),
+            plan_length=len(interview_plan),
+            followup_budget=self.followup_budget,
+            followup_max_per_question=self.followup_max_per_question,
+            min_questions=self.min_questions,
+            min_curriculum_days=self.min_curriculum_days,
+        )
         return await self._respond_question(state, strategy, conversation=[])
 
     # ------------------------------------------------------------------ next
@@ -144,21 +171,39 @@ class InterviewOrchestrator:
         )
         current_question.question_id = qid
 
+        session_id = state.session_id
+        answer_truncated = (request.message or "")[:200]
+
+        _agent_log(
+            "turn_received",
+            session_id=session_id,
+            turn=state.progress.total_questions_asked,
+            question_id=qid,
+            question_day=current_question.day,
+            question_topic=current_question.topic,
+            question_difficulty=current_question.difficulty.value if hasattr(current_question.difficulty, "value") else str(current_question.difficulty),
+            answer_preview=answer_truncated,
+            answer_len=len(request.message or ""),
+        )
+
         # 0. Content moderation (server-side): terminate immediately on abuse.
         moderation_reason = moderation_triggered(request.message)
         if moderation_reason:
+            _agent_log("moderation_triggered", session_id=session_id, reason=moderation_reason)
             return self._terminate_for_moderation(
                 state, current_question, request.message, moderation_reason
             )
 
         # 0b. Clarifying question: answer it and re-ask, consuming no slot/budget.
         if is_clarifying_question(request.message):
+            _agent_log("clarification_detected", session_id=session_id, question_id=qid)
             return self._respond_clarification(state, current_question, request.message)
 
         # 0c. Classify the answer so non-answers get targeted follow-ups.
         answer_kind = classify_answer(request.message, current_question.concepts)
 
         # 1. Evaluate the candidate's answer.
+        difficulty_before = current_question.difficulty.value if hasattr(current_question.difficulty, "value") else str(current_question.difficulty)
         evaluation = await self._evaluate_answer(
             state, current_question, request.message, answer_kind
         )
@@ -167,6 +212,17 @@ class InterviewOrchestrator:
         evaluation.topic = current_question.topic
         state.history.append(evaluation)
 
+        _agent_log(
+            "evaluation_result",
+            session_id=session_id,
+            question_id=qid,
+            score=evaluation.score,
+            concept_coverage=evaluation.concept_coverage,
+            follow_up_required=evaluation.follow_up_required,
+            weak_concepts=list(evaluation.gaps)[:5],
+            answer_kind=answer_kind,
+        )
+
         # Loop safeguard: if the exact same question text is already being asked
         # again, force progression instead of looping on it.
         current_text = current_question.question_text or ""
@@ -174,9 +230,26 @@ class InterviewOrchestrator:
             bool(current_text)
             and state.progress.asked_question_texts.count(current_text) > 1
         )
+        if repeats_prior_question:
+            _agent_log(
+                "loop_safeguard_triggered",
+                session_id=session_id,
+                question_id=qid,
+                repeated_text_preview=current_text[:80],
+            )
 
         # 2. Adapt difficulty from the score.
         state.difficulty_state = adapt_difficulty(state.difficulty_state, evaluation.score)
+        difficulty_after = state.difficulty_state.current_difficulty.value if hasattr(state.difficulty_state.current_difficulty, "value") else str(state.difficulty_state.current_difficulty)
+
+        if difficulty_before != difficulty_after:
+            _agent_log(
+                "difficulty_adapted",
+                session_id=session_id,
+                before=difficulty_before,
+                after=difficulty_after,
+                score=evaluation.score,
+            )
 
         # 3. Decide the next step (follow-up / next question / finish).
         decision, follow_up_strategy = evaluate_next_step(
@@ -189,6 +262,20 @@ class InterviewOrchestrator:
             remaining_plan_slots=len(state.interview_plan) - state.progress.current_slot,
             non_answer_kind=answer_kind,
             repeats_prior_question=repeats_prior_question,
+            min_questions=self.min_questions,
+            min_curriculum_days=self.min_curriculum_days,
+        )
+
+        _agent_log(
+            "decision_engine",
+            session_id=session_id,
+            decision=decision.value if hasattr(decision, "value") else str(decision),
+            follow_up_reason=follow_up_strategy.reason_for_follow_up if follow_up_strategy else None,
+            budget_remaining=state.follow_up_context.global_follow_up_budget,
+            questions_asked=state.progress.total_questions_asked,
+            days_covered=state.progress.distinct_days_covered,
+            min_questions_floor=self.min_questions,
+            min_days_floor=self.min_curriculum_days,
         )
 
         # 4. Apply the decision to global state.
@@ -262,6 +349,13 @@ class InterviewOrchestrator:
             raise ValueError("Invalid state: FOLLOW_UP_PENDING without a current question.")
         text = await self._generate_follow_up(state, follow_up_strategy, current, conversation)
         text = self._ensure_distinct_text(state, text, current)
+
+        # Always prepend a quote of the candidate's previous answer so the
+        # follow-up is grounded and the candidate knows what is being probed.
+        prev = (follow_up_strategy.previous_answer or "").strip()
+        if prev and "You said:" not in text:
+            text = f'You said: "{prev}". {text}'
+
         qid = current.question_id or str(uuid.uuid4())
         current.question_id = qid
         current.question_text = text
@@ -277,6 +371,15 @@ class InterviewOrchestrator:
 
     async def _respond_completed(self, state: AgentState) -> AgentTurnResponse:
         feedback = await self._generate_feedback(state)
+        _agent_log(
+            "interview_complete",
+            session_id=state.session_id,
+            total_questions=state.progress.total_questions_asked,
+            days_covered=state.progress.distinct_days_covered,
+            avg_score=round(
+                sum(h.score for h in state.history) / len(state.history), 2
+            ) if state.history else 0.0,
+        )
         return AgentTurnResponse(
             agentState=state.model_dump(),
             sessionView=self._session_view(state),
@@ -303,7 +406,20 @@ class InterviewOrchestrator:
             text = result.get("question")
             if text and text.strip():
                 return text
+            _agent_log(
+                "ai_fallback",
+                session_id=state.session_id,
+                reason="empty_response",
+                operation="generate_question",
+            )
         except AIIntelligenceError as exc:
+            _agent_log(
+                "ai_fallback",
+                session_id=state.session_id,
+                reason="ai_error",
+                operation="generate_question",
+                error=str(exc),
+            )
             logger.warning("question generation failed, using fallback: %s", exc)
         return self._fallback_question_text(strategy)
 
@@ -314,6 +430,7 @@ class InterviewOrchestrator:
         current: PlannedQuestion,
         conversation,
     ) -> str:
+        text: str | None = None
         try:
             result = await self.ai_client.generate_followup(
                 candidate_context=candidate_context_to_ai(state.candidate_context),
@@ -329,11 +446,28 @@ class InterviewOrchestrator:
                 ),
             )
             text = result.get("question")
-            if text and text.strip():
-                return text
+            if not (text and text.strip()):
+                text = None
+                _agent_log(
+                    "ai_fallback",
+                    session_id=state.session_id,
+                    reason="empty_response",
+                    operation="generate_followup",
+                )
         except AIIntelligenceError as exc:
+            _agent_log(
+                "ai_fallback",
+                session_id=state.session_id,
+                reason="ai_error",
+                operation="generate_followup",
+                error=str(exc),
+            )
             logger.warning("follow-up generation failed, using fallback: %s", exc)
-        return self._fallback_followup_text(follow_up_strategy, current.topic)
+
+        if text is None:
+            text = self._fallback_followup_text(follow_up_strategy, current.topic)
+
+        return text
 
     async def _evaluate_answer(
         self,
@@ -370,6 +504,13 @@ class InterviewOrchestrator:
                 follow_up_required=bool(result.get("followUpRequired", False)),
             )
         except AIIntelligenceError as exc:
+            _agent_log(
+                "ai_fallback",
+                session_id=state.session_id,
+                reason="ai_error",
+                operation="evaluate_answer",
+                error=str(exc),
+            )
             logger.warning("evaluation failed, using fallback: %s", exc)
             return self._fallback_evaluation(current_question, answer, kind)
 
@@ -391,6 +532,13 @@ class InterviewOrchestrator:
                 next=list(result.get("next", [])),
             )
         except AIIntelligenceError as exc:
+            _agent_log(
+                "ai_fallback",
+                session_id=state.session_id,
+                reason="ai_error",
+                operation="generate_feedback",
+                error=str(exc),
+            )
             logger.warning("feedback generation failed, using fallback: %s", exc)
             return self._fallback_feedback(state)
 
@@ -409,6 +557,7 @@ class InterviewOrchestrator:
         probes = follow_up_strategy.concepts_to_probe[:3]
         probe_text = ", ".join(probes) if probes else "the topic"
         kind = follow_up_strategy.non_answer_kind
+
         if kind == "empty":
             return (
                 f"You didn't provide an answer. Can you walk me through your thinking "
@@ -521,6 +670,11 @@ class InterviewOrchestrator:
         asked = [self._normalize_text(t) for t in state.progress.asked_question_texts]
         if self._normalize_text(text) not in asked:
             return text
+        _agent_log(
+            "distinct_text_enforcement",
+            session_id=state.session_id,
+            original_preview=text[:80],
+        )
         concepts = ", ".join(current.concepts[:3]) if current.concepts else "the core ideas"
         variants = [
             f"Let's look at this from another angle: explain {current.topic} and how it works in practice, covering {concepts}.",
