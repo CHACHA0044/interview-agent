@@ -31,3 +31,5 @@ export { Badge } from "./Badge";
 export { Skeleton, SkeletonCard, SkeletonMessage } from "./Skeleton";
 export { EmptyState } from "./EmptyState";
 export { Progress } from "./Progress";
+export { Avatar } from "./Avatar";
+export { CustomSelect } from "./CustomSelect";

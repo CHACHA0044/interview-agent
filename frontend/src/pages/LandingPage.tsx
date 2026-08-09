@@ -104,20 +104,31 @@ function FeatureCard({ feature }: { feature: (typeof FEATURES)[number] }) {
     <Surface
       className={cn(
         "col-span-4 md:col-span-4 xl:col-span-4 h-full cursor-pointer transition-all duration-300",
-        isExpanded ? "border-[#D4AF37]/40" : "hover:border-[#D4AF37]/25"
+        isExpanded
+          ? "border-[#D4AF37]/60 bg-[#131313] shadow-[0_0_44px_-10px_rgba(212,175,55,0.45)]"
+          : "hover:border-[#D4AF37]/35 hover:shadow-[0_0_36px_-14px_rgba(212,175,55,0.35)]"
       )}
+      onMouseEnter={() => setIsExpanded(true)}
+      onMouseLeave={() => setIsExpanded(false)}
       padding="lg"
     >
       <button
         type="button"
-        onClick={() => setIsExpanded((value) => !value)}
+        onClick={() => {
+          if (!window.matchMedia("(hover: hover)").matches) {
+            setIsExpanded((value) => !value);
+          }
+        }}
         aria-expanded={isExpanded}
         className="w-full h-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50 rounded-lg"
       >
         <div className="stack stack-md h-full justify-between">
           <div className="stack stack-sm">
             <motion.span
-              className="h-11 w-11 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37]"
+              className={cn(
+                "h-11 w-11 rounded-xl bg-[#171717] border flex items-center justify-center text-[#D4AF37] transition-colors",
+                isExpanded ? "border-[#D4AF37]/50 shadow-[0_0_24px_-6px_rgba(212,175,55,0.5)]" : "border-[#262626]"
+              )}
               whileHover={{ scale: 1.08, rotate: 6 }}
               whileTap={{ scale: 0.95 }}
               animate={

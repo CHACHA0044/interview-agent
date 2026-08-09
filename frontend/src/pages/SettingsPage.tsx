@@ -5,18 +5,58 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { toast } from "sonner";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useInterviewStore } from "@/stores/interview.store";
-import { useGatewayHealth } from "@/hooks/use-gateway-health";
+import { useGatewayHealth, type GatewayHealth } from "@/hooks/use-gateway-health";
 import { clearSessionCache } from "@/services/interview.service";
 import { clearSessionSchedule } from "@/services/session.schedule";
 import { LayoutContainer, Section, PageHeading, Surface, Stack, Cluster } from "@/components/layout/system";
 import { cn } from "@/lib/cn";
 
-const healthVisual = {
-  checking: { dot: "bg-[#D4AF37]", label: "Checking Gateway Health", text: "Probing the gateway /health endpoint…" },
-  online: { dot: "bg-[#22C55E]", label: "Online · Redis", text: "Healthy keepalive — sessions are durable in Redis." },
-  degraded: { dot: "bg-[#F59E0B]", label: "Degraded · In-Memory Store", text: "Reachable, but Redis is down. Sessions survive only until the gateway restarts." },
-  offline: { dot: "bg-[#EF4444]", label: "Offline / Unreachable", text: "The gateway could not be reached from the browser." },
-} as const;
+interface HealthVisual {
+  dot: string;
+  label: string;
+  text: string;
+}
+
+function resolveHealthVisual(health: GatewayHealth): HealthVisual {
+  const { status, storeType } = health;
+  const isRedis = storeType === "redis";
+
+  if (status === "checking") {
+    return {
+      dot: "bg-[#D4AF37]",
+      label: "Checking Gateway Health",
+      text: "Probing the gateway /health endpoint…",
+    };
+  }
+
+  if (status === "offline") {
+    return {
+      dot: "bg-[#EF4444]",
+      label: "Offline / Unreachable",
+      text: "The gateway could not be reached from the browser.",
+    };
+  }
+
+  const storeLabel = isRedis ? " · Redis" : storeType === "in-memory" ? " · In-Memory Store" : "";
+
+  if (status === "online") {
+    return {
+      dot: "bg-[#22C55E]",
+      label: `Online${storeLabel}`,
+      text: isRedis
+        ? "Healthy keepalive — sessions are durable in Redis."
+        : "Healthy keepalive — sessions live in the in-memory store and reset when the gateway restarts.",
+    };
+  }
+
+  return {
+    dot: "bg-[#F59E0B]",
+    label: `Degraded${storeLabel}`,
+    text: isRedis
+      ? "Reachable, but Redis is down — sessions fall back to the in-memory store until it recovers."
+      : "Reachable, but the session store is degraded — sessions survive only until the gateway restarts.",
+  };
+}
 
 export function SettingsPage() {
   const settings = useSettingsStore();
@@ -57,7 +97,7 @@ export function SettingsPage() {
     settings.setShowInternalMetadata(show);
   };
 
-  const visual = healthVisual[health.status];
+  const visual = resolveHealthVisual(health);
 
   return (
     <PageTransition>
@@ -76,29 +116,70 @@ export function SettingsPage() {
 
           <Surface padding="lg" className="stack stack-md">
             <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
+              <Activity className="h-5 w-5 text-[#D4AF37]" />
+              <h2 className="text-base font-bold text-white">Gateway Health & Keepalive</h2>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 rounded-xl bg-[#171717] border border-[#262626]">
+              <span className={cn("mt-1 h-3 w-3 rounded-full shrink-0", visual.dot)} aria-hidden="true" />
+              <Stack gap="xs" className="flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-white">{visual.label}</span>
+                  <Badge
+                    variant={health.status === "online" ? "success" : health.status === "degraded" ? "warning" : health.status === "offline" ? "danger" : "gold"}
+                    className="text-[10px]"
+                  >
+                    {health.status.toUpperCase()}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-[#737373] leading-relaxed">{visual.text}</p>
+                {health.lastError ? (
+                  health.isBlockedByClient ? (
+                    <div className="p-3 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[11px] text-[#F3E5AB] leading-relaxed">
+                      <span className="font-semibold block text-[#D4AF37] mb-0.5">
+                        Client Blocker Detected (AdBlock / Brave Shield):
+                      </span>
+                      The health probe was blocked client-side by a browser extension or Brave Shield.
+                      Try disabling shields for this domain if you want live status polling.
+                      <span className="block text-[10px] text-[#A3A3A3] mt-1 font-mono">
+                        Interview functionality (start, turns, evaluation) operates on API endpoints and remains fully functional.
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/20 p-2.5 rounded-lg font-mono leading-relaxed">
+                      Diagnostic: {health.lastError}
+                      {health.status === "offline" && (
+                        <span className="block text-[10px] text-[#F87171] mt-1 font-sans">
+                          Note: If the backend is running on Render, ensure FRONTEND_ORIGINS on Render includes your Vercel frontend URL.
+                        </span>
+                      )}
+                    </p>
+                  )
+                ) : null}
+                <p className="text-[10px] font-mono text-[#525252]">
+                  session store: {health.storeType}
+                  {health.ttlSeconds ? ` · session TTL: ${Math.round(health.ttlSeconds / 60)}m` : ""}
+                  {" · keepalive self-ping: active"}
+                </p>
+              </Stack>
+            </div>
+          </Surface>
+
+          <Surface padding="lg" className="stack stack-md">
+            <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
               <Server className="h-5 w-5 text-[#D4AF37]" />
               <h2 className="text-base font-bold text-white">Backend API Configuration</h2>
             </div>
 
             <Stack gap="md">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-xl bg-[#171717] border border-[#262626]">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-4 rounded-xl bg-[#171717] border border-[#262626]">
                 <div>
-                  <span className="text-sm font-semibold text-white block">Use Mock Services</span>
-                  <span className="text-xs text-[#737373]">Mock services removed — using live backend only.</span>
+                  <span className="text-sm font-semibold text-white block">Backend Mode</span>
+                  <span className="text-xs text-[#737373]">Mock services removed — the app talks directly to the live gateway.</span>
                 </div>
-                <label
-                  title="Mock services removed — using live backend only."
-                  className="relative inline-flex items-center cursor-not-allowed touch-target"
-                >
-                  <input
-                    type="checkbox"
-                    checked={false}
-                    disabled
-                    aria-label="Mock services (removed)"
-                    className="sr-only peer"
-                  />
-                  <div className="relative w-11 h-6 bg-[#262626] rounded-full peer-disabled:opacity-40 peer-disabled:cursor-not-allowed after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-[#0A0A0A] after:rounded-full after:h-5 after:w-5 after:transition-all" />
-                </label>
+                <Badge variant="gold" className="text-[10px] font-mono w-fit">
+                  LIVE ONLY
+                </Badge>
               </div>
 
               <div className="space-y-2">
@@ -250,63 +331,15 @@ export function SettingsPage() {
 
           <Surface padding="lg" className="stack stack-md">
             <div className="flex items-center gap-3 border-b border-[#262626] pb-4">
-              <Activity className="h-5 w-5 text-[#D4AF37]" />
-              <h2 className="text-base font-bold text-white">Gateway Health & Keepalive</h2>
-            </div>
-
-            <div className="flex items-start gap-4 p-4 rounded-xl bg-[#171717] border border-[#262626]">
-              <span className={cn("mt-1 h-3 w-3 rounded-full shrink-0", visual.dot)} aria-hidden="true" />
-              <Stack gap="xs" className="flex-1">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-white">{visual.label}</span>
-                  <Badge
-                    variant={health.status === "online" ? "success" : health.status === "degraded" ? "warning" : health.status === "offline" ? "danger" : "gold"}
-                    className="text-[10px]"
-                  >
-                    {health.status.toUpperCase()}
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-[#737373] leading-relaxed">{visual.text}</p>
-                {health.lastError ? (
-                  health.isBlockedByClient ? (
-                    <div className="p-3 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[11px] text-[#F3E5AB] leading-relaxed">
-                      <span className="font-semibold block text-[#D4AF37] mb-0.5">
-                        Client Blocker Detected (AdBlock / Brave Shield):
-                      </span>
-                      The health probe was blocked client-side by a browser extension or Brave Shield.
-                      Try disabling shields for this domain if you want live status polling.
-                      <span className="block text-[10px] text-[#A3A3A3] mt-1 font-mono">
-                        Interview functionality (start, turns, evaluation) operates on API endpoints and remains fully functional.
-                      </span>
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/20 p-2.5 rounded-lg font-mono leading-relaxed">
-                      Diagnostic: {health.lastError}
-                      {health.status === "offline" && (
-                        <span className="block text-[10px] text-[#F87171] mt-1 font-sans">
-                          Note: If the backend is running on Render, ensure FRONTEND_ORIGINS on Render includes your Vercel frontend URL.
-                        </span>
-                      )}
-                    </p>
-                  )
-                ) : null}
-                <p className="text-[10px] font-mono text-[#525252]">
-                  session store: {health.storeType}
-                  {health.ttlSeconds ? ` · session TTL: ${Math.round(health.ttlSeconds / 60)}m` : ""}
-                  {" · keepalive self-ping: active"}
-                </p>
-              </Stack>
+              <Bug className="h-5 w-5 text-[#D4AF37]" />
+              <h2 className="text-base font-bold text-white">Debug Metadata Panel</h2>
             </div>
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-xl bg-[#171717] border border-[#262626]">
               <div className="flex items-start gap-3">
-                <Bug className="h-4 w-4 text-[#D4AF37] mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-sm font-semibold text-white block">Debug Metadata Panel</span>
-                  <span className="text-xs text-[#737373]">
-                    Show live agent metadata (question day, difficulty, follow-up budget, scores) in the interview view.
-                  </span>
-                </div>
+                <span className="text-xs text-[#737373]">
+                  Show live agent metadata (question day, difficulty, follow-up budget, scores) in the interview view.
+                </span>
               </div>
               <label className="relative inline-flex items-center cursor-pointer touch-target">
                 <input

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Search, UserCheck, Play, Filter, Award, ChevronRight } from "lucide-react";
-import { Badge, Input, Button, SkeletonCard, EmptyState, Progress } from "@/components/ui";
+import { Badge, Input, Button, SkeletonCard, EmptyState, Progress, Avatar } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { CandidateDetailsModal } from "@/components/features/candidates/CandidateDetailsModal";
 import { useCandidates } from "@/hooks/use-candidates";
@@ -104,10 +104,13 @@ export function CandidatesPage() {
                   >
                     <div className="stack stack-md">
                       <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <span className="text-[11px] font-mono text-[#D4AF37] block mb-1">{candidate.member.id}</span>
-                          <h3 className="text-base font-bold text-white">{candidate.member.name}</h3>
-                          <p className="text-xs text-[#A3A3A3] mt-0.5">{candidate.member.jobRole}</p>
+                        <div className="flex items-center gap-3 min-w-0 group">
+                          <Avatar name={candidate.member.name} size="lg" />
+                          <div className="min-w-0">
+                            <span className="text-[11px] font-mono text-[#D4AF37] block mb-1">{candidate.member.id}</span>
+                            <h3 className="text-base font-bold text-white truncate">{candidate.member.name}</h3>
+                            <p className="text-xs text-[#A3A3A3] mt-0.5 truncate">{candidate.member.jobRole}</p>
+                          </div>
                         </div>
                         <Badge variant="success">Eligible</Badge>
                       </div>

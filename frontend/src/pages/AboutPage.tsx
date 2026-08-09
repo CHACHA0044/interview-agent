@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -58,6 +58,8 @@ const FLOW_STEPS: FlowStepData[] = [
     icon: FileChartColumn,
   },
 ];
+
+const AUTOPLAY_INTERVAL_MS = 3000;
 
 function FlowConnector() {
   const prefersReducedMotion = useReducedMotion();
@@ -135,18 +137,29 @@ function FlowConnector() {
   );
 }
 
-function FlowStep({ step, index }: { step: FlowStepData; index: number }) {
-  const [isExpanded, setIsExpanded] = useState(false);
+function FlowStep({
+  step,
+  index,
+  active = false,
+  paused = false,
+}: {
+  step: FlowStepData;
+  index: number;
+  active?: boolean;
+  paused?: boolean;
+}) {
+  const [isLocallyOpen, setIsLocallyOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const Icon = step.icon;
+  const isExpanded = active || isLocallyOpen;
 
   return (
     <motion.div
-      onHoverStart={() => setIsExpanded(true)}
-      onHoverEnd={() => setIsExpanded(false)}
-      onClick={() => setIsExpanded((value) => !value)}
-      onFocus={() => setIsExpanded(true)}
-      onBlur={() => setIsExpanded(false)}
+      onHoverStart={() => setIsLocallyOpen(true)}
+      onHoverEnd={() => setIsLocallyOpen(false)}
+      onClick={() => setIsLocallyOpen((value) => !value)}
+      onFocus={() => setIsLocallyOpen(true)}
+      onBlur={() => setIsLocallyOpen(false)}
       whileHover={prefersReducedMotion ? undefined : { y: -3 }}
       transition={{ type: "spring", stiffness: 280, damping: 22 }}
       tabIndex={0}
@@ -193,7 +206,48 @@ function FlowStep({ step, index }: { step: FlowStepData; index: number }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {!prefersReducedMotion && active && (
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-2xl bg-[#D4AF37]/15 overflow-hidden">
+          <motion.div
+            key="autoplay-progress"
+            className="h-full bg-[#D4AF37]"
+            initial={{ width: "0%" }}
+            animate={paused ? undefined : { width: "100%" }}
+            transition={{ duration: AUTOPLAY_INTERVAL_MS / 1000, ease: "linear" }}
+          />
+        </div>
+      )}
     </motion.div>
+  );
+}
+
+function AgentFlow() {
+  const prefersReducedMotion = useReducedMotion();
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+
+  useEffect(() => {
+    if (prefersReducedMotion || isPaused) return;
+    const interval = window.setInterval(() => {
+      setActiveIndex((current) => (current + 1) % FLOW_STEPS.length);
+    }, AUTOPLAY_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [prefersReducedMotion, isPaused]);
+
+  return (
+    <div
+      className="flex flex-col xl:flex-row xl:items-start gap-4 xl:gap-0"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+    >
+      {FLOW_STEPS.map((step, index) => (
+        <Fragment key={step.title}>
+          {index > 0 && <FlowConnector />}
+          <FlowStep step={step} index={index} active={index === activeIndex} paused={isPaused} />
+        </Fragment>
+      ))}
+    </div>
   );
 }
 
@@ -274,18 +328,12 @@ export function AboutPage() {
               </Badge>
               <h2 className="text-2xl font-bold text-white tracking-tight">Agent Interview Flow</h2>
               <p className="text-sm text-[#A3A3A3] max-w-2xl mx-auto">
-                How a candidate moves through the multi-agent interview engine, from profile calibration to final feedback. Hover a stage to see what it does.
+                A self-running tour of how a candidate moves through the multi-agent interview engine, from profile
+                calibration to final feedback. Hover, tap, or let it auto-advance.
               </p>
             </div>
 
-            <div className="flex flex-col xl:flex-row xl:items-start gap-4 xl:gap-0">
-              {FLOW_STEPS.map((step, index) => (
-                <Fragment key={step.title}>
-                  {index > 0 && <FlowConnector />}
-                  <FlowStep step={step} index={index} />
-                </Fragment>
-              ))}
-            </div>
+            <AgentFlow />
           </Stack>
         </LayoutContainer>
       </Section>

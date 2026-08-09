@@ -1,17 +1,16 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Play, Settings2, ShieldCheck, Check, UserCheck, Layers, Clock, ChevronDown, UserRound } from "lucide-react";
-import { Button, Badge } from "@/components/ui";
+import { Play, Settings2, Check, UserCheck, Layers, Clock, UserRound, ListChecks } from "lucide-react";
+import { Button, Badge, CustomSelect } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useCandidates } from "@/hooks/use-candidates";
 import { useCurriculum } from "@/hooks/use-curriculum";
 import { useInterviewStore } from "@/stores/interview.store";
-import type { Candidate, InterviewSetupFormData } from "@/types";
+import type { InterviewSetupFormData } from "@/types";
 import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface, Stack } from "@/components/layout/system";
-import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/cn";
 
 const DAY_TYPE_LABELS: Record<string, string> = {
@@ -75,21 +74,10 @@ export function InterviewSetupPage() {
     "Data Foundations",
   ]);
 
-  const [isCandidateDropdownOpen, setIsCandidateDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsCandidateDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  const [duration, setDuration] = useState(30);
+  const [questionCount, setQuestionCount] = useState(5);
 
   const {
-    register,
     handleSubmit,
     setValue,
     formState: { errors },
@@ -133,10 +121,19 @@ export function InterviewSetupPage() {
     setValue("focusTopics", updated, { shouldValidate: true });
   };
 
-  const handleSelectCandidate = (candidate: Candidate) => {
-    setSelectedCandidateId(candidate.member.id);
-    setValue("candidateId", candidate.member.id);
-    setIsCandidateDropdownOpen(false);
+  const handleSelectCandidate = (candidateId: string) => {
+    setSelectedCandidateId(candidateId);
+    setValue("candidateId", candidateId, { shouldValidate: true });
+  };
+
+  const handleDurationChange = (value: string) => {
+    setDuration(Number(value));
+    setValue("duration", Number(value), { shouldValidate: true });
+  };
+
+  const handleQuestionCountChange = (value: string) => {
+    setQuestionCount(Number(value));
+    setValue("questionCount", Number(value), { shouldValidate: true });
   };
 
   const onSubmit = async (_data: InterviewSetupFormData) => {
@@ -180,73 +177,20 @@ export function InterviewSetupPage() {
                     <label htmlFor="candidate-select" className="text-xs font-medium text-[#A3A3A3] block">
                       Select Cohort Candidate
                     </label>
-                    <div ref={dropdownRef} className="relative">
-                      <Button
-                        id="candidate-select"
-                        type="button"
-                        variant="secondary"
-                        size="chip"
-                        aria-haspopup="listbox"
-                        aria-expanded={isCandidateDropdownOpen}
-                        onClick={() => setIsCandidateDropdownOpen((open) => !open)}
-                        className="w-full justify-between gap-2 border-[#222222] bg-[#141414]"
-                        icon={<UserRound className="h-4 w-4 text-[#D4AF37]" />}
-                      >
-                        <span className="truncate text-xs text-white">
-                          {selectedCandidate
-                            ? `${selectedCandidate.member.name} (${selectedCandidate.member.jobRole})`
-                            : "Select a candidate"}
-                        </span>
-                        <motion.span
-                          animate={isCandidateDropdownOpen ? { rotate: 180 } : { rotate: 0 }}
-                          transition={{ duration: 0.2 }}
-                          className="shrink-0 text-[#737373]"
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </motion.span>
-                      </Button>
-
-                      <AnimatePresence>
-                        {isCandidateDropdownOpen && (
-                          <motion.ul
-                            role="listbox"
-                            aria-label="Select cohort candidate"
-                            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                            transition={{ duration: 0.15 }}
-                            className="absolute z-30 mt-2 w-full max-h-64 overflow-y-auto rounded-xl bg-[#171717] border border-[#262626] shadow-2xl shadow-black/60 p-1"
-                          >
-                            {candidates?.map((c) => {
-                              const isSelected = c.member.id === selectedCandidateId;
-                              return (
-                                <li key={c.member.id} role="none">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    role="option"
-                                    aria-selected={isSelected}
-                                    onClick={() => handleSelectCandidate(c)}
-                                    className="w-full justify-between rounded-lg px-3 h-auto py-2"
-                                  >
-                                    <span className="flex items-center gap-2.5 min-w-0">
-                                      <span className="shrink-0 h-7 w-7 rounded-lg bg-[#1D1D1D] border border-[#262626] flex items-center justify-center">
-                                        <UserRound className="h-3.5 w-3.5 text-[#D4AF37]" />
-                                      </span>
-                                      <span className="min-w-0">
-                                        <span className="block text-xs font-semibold text-white truncate">{c.member.name}</span>
-                                        <span className="block text-[10px] text-[#737373] truncate">{c.member.jobRole}</span>
-                                      </span>
-                                    </span>
-                                    {isSelected ? <Check className="h-4 w-4 text-[#D4AF37] shrink-0" /> : null}
-                                  </Button>
-                                </li>
-                              );
-                            })}
-                          </motion.ul>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                    <CustomSelect
+                      id="candidate-select"
+                      value={selectedCandidateId}
+                      onChange={handleSelectCandidate}
+                      options={(candidates ?? []).map((c) => ({
+                        value: c.member.id,
+                        label: c.member.name,
+                        sublabel: c.member.jobRole,
+                      }))}
+                      placeholder="Select a candidate"
+                      ariaLabel="Select cohort candidate"
+                      triggerIcon={<UserRound className="h-4 w-4 text-[#D4AF37]" />}
+                      optionIcon={<UserRound className="h-3.5 w-3.5 text-[#D4AF37]" />}
+                    />
                   </div>
 
                   {selectedCandidate ? (
@@ -345,15 +289,18 @@ export function InterviewSetupPage() {
                       <label htmlFor="duration-select" className="text-xs font-medium text-[#A3A3A3]">
                         Target session length
                       </label>
-                      <select
+                      <CustomSelect
                         id="duration-select"
-                        {...register("duration", { valueAsNumber: true })}
-                        className="touch-target w-full px-4 rounded-xl bg-[#141414] border border-[#222222] text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                      >
-                        <option value={15}>15 Minutes (Fast Screen)</option>
-                        <option value={30}>30 Minutes (Standard Deep Dive)</option>
-                        <option value={45}>45 Minutes (Comprehensive)</option>
-                      </select>
+                        value={String(duration)}
+                        onChange={handleDurationChange}
+                        options={[
+                          { value: "15", label: "15 Minutes", sublabel: "Fast Screen" },
+                          { value: "30", label: "30 Minutes", sublabel: "Standard Deep Dive" },
+                          { value: "45", label: "45 Minutes", sublabel: "Comprehensive" },
+                        ]}
+                        ariaLabel="Session duration"
+                        triggerIcon={<Clock className="h-4 w-4 text-[#D4AF37]" />}
+                      />
                     </Stack>
                   </Surface>
 
@@ -363,29 +310,21 @@ export function InterviewSetupPage() {
                       <label htmlFor="question-count-select" className="text-xs font-medium text-[#A3A3A3]">
                         Assessment depth target
                       </label>
-                      <select
+                      <CustomSelect
                         id="question-count-select"
-                        {...register("questionCount", { valueAsNumber: true })}
-                        className="touch-target w-full px-4 rounded-xl bg-[#141414] border border-[#222222] text-xs text-white focus:outline-none focus:border-[#D4AF37]"
-                      >
-                        <option value={3}>3 Questions (Express)</option>
-                        <option value={5}>5 Questions (Standard)</option>
-                        <option value={8}>8 Questions (In-depth)</option>
-                      </select>
+                        value={String(questionCount)}
+                        onChange={handleQuestionCountChange}
+                        options={[
+                          { value: "3", label: "3 Questions", sublabel: "Express" },
+                          { value: "5", label: "5 Questions", sublabel: "Standard" },
+                          { value: "8", label: "8 Questions", sublabel: "In-depth" },
+                        ]}
+                        ariaLabel="Assessment depth target"
+                        triggerIcon={<ListChecks className="h-4 w-4 text-[#D4AF37]" />}
+                      />
                     </Stack>
                   </Surface>
                 </LayoutGrid>
-
-                <Surface padding="md" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-[#22C55E]" />
-                    <div>
-                      <span className="text-xs font-semibold text-white block">Grounded Evaluation Rubric</span>
-                      <span className="text-[11px] text-[#737373]">Enforces zero-hallucination scoring against cohort ground truth.</span>
-                    </div>
-                  </div>
-                  <Badge variant="success">Active</Badge>
-                </Surface>
               </div>
             </LayoutGrid>
           </form>
