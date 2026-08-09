@@ -25,6 +25,21 @@ from app.sessions.redis_store import InMemorySessionStore, RedisSessionStore
 logger = logging.getLogger(__name__)
 
 
+class _StatusPollAccessFilter(logging.Filter):
+    """Drop default-level uvicorn access lines for the high-frequency status poll.
+
+    The frontend polls GET /api/llm/status every ~4s; at INFO that would emit
+    ~15 lines/minute and obscure interview-turn logs during manual analysis.
+    Traceability is preserved via the DEBUG-level ``status_poll`` structured
+    line emitted by the route itself.
+    """
+
+    _IGNORED = ("/api/llm/status",)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not any(path in record.getMessage() for path in self._IGNORED)
+
+
 async def _resolve_session_store(settings: Settings):
     """Use Redis when reachable; otherwise fall back to in-memory storage.
 
@@ -85,6 +100,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     if not isinstance(level, int):
         level = logging.INFO
     logging.basicConfig(level=level)
+    logging.getLogger("uvicorn.access").addFilter(_StatusPollAccessFilter())
 
     bound_port = int(
         os.environ.get("PORT") or os.environ.get("BACKEND_PORT") or settings.port

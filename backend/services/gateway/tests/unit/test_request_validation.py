@@ -15,6 +15,42 @@ def test_start_contract(client):
     assert body["feedback"] is None
 
 
+def test_start_contract_forwards_interview_config(client, fake_agent):
+    resp = client.post(
+        "/api/interview",
+        json={
+            "sessionId": "cfg-1",
+            "candidate": make_candidate(),
+            "interviewConfig": {"minQuestions": 10, "followupBudget": 3},
+        },
+    )
+    assert resp.status_code == 200
+    assert fake_agent.start_calls[0]["interviewConfig"] == {
+        "minQuestions": 10,
+        "minCurriculumDays": 4,
+        "followupBudget": 3,
+        "followupMaxPerQuestion": 2,
+    }
+
+
+def test_start_contract_clamps_out_of_range_interview_config(client, fake_agent):
+    resp = client.post(
+        "/api/interview",
+        json={
+            "sessionId": "cfg-2",
+            "candidate": make_candidate(),
+            "interviewConfig": {"minQuestions": 99, "followupMaxPerQuestion": 0},
+        },
+    )
+    assert resp.status_code == 200
+    assert fake_agent.start_calls[0]["interviewConfig"] == {
+        "minQuestions": 12,
+        "minCurriculumDays": 4,
+        "followupBudget": 4,
+        "followupMaxPerQuestion": 1,
+    }
+
+
 def test_turn_contract(client):
     client.post(
         "/api/interview",

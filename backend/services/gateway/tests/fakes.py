@@ -49,8 +49,19 @@ class FakeAgentClient:
             question=question,
         )
 
-    async def start(self, session_id: str, candidate: Candidate) -> AgentTurnResponse:
-        self.start_calls.append({"sessionId": session_id, "candidate": candidate})
+    async def start(
+        self,
+        session_id: str,
+        candidate: Candidate,
+        interview_config: dict | None = None,
+    ) -> AgentTurnResponse:
+        self.start_calls.append(
+            {
+                "sessionId": session_id,
+                "candidate": candidate,
+                "interviewConfig": interview_config,
+            }
+        )
         if self.raise_error is not None:
             raise self.raise_error
         return self.start_response or self.turn("Welcome. Let's begin.")

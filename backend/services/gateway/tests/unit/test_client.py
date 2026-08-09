@@ -119,3 +119,56 @@ async def test_sends_internal_token_header():
         assert captured["token"] == "sekret"
     finally:
         await client.aclose()
+
+
+async def test_get_json_quiet_suppresses_httpx_info(caplog):
+    import logging
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"provider": "groq"})
+
+    client = InternalHttpClient(
+        "http://agent.test", transport=make_transport(handler), retries=1
+    )
+    try:
+        httpx_logger = logging.getLogger("httpx")
+        prev = httpx_logger.level
+        httpx_logger.setLevel(logging.INFO)
+        try:
+            with caplog.at_level(logging.INFO, logger="httpx"):
+                result = await client.get_json("/status", quiet=True)
+        finally:
+            httpx_logger.setLevel(prev)
+        assert result == {"provider": "groq"}
+        assert not any(
+            record.name == "httpx" and record.levelno == logging.INFO
+            for record in caplog.records
+        )
+    finally:
+        await client.aclose()
+
+
+async def test_get_json_default_still_logs_httpx_info(caplog):
+    import logging
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={})
+
+    client = InternalHttpClient(
+        "http://agent.test", transport=make_transport(handler), retries=1
+    )
+    try:
+        httpx_logger = logging.getLogger("httpx")
+        prev = httpx_logger.level
+        httpx_logger.setLevel(logging.INFO)
+        try:
+            with caplog.at_level(logging.INFO, logger="httpx"):
+                await client.get_json("/status")
+        finally:
+            httpx_logger.setLevel(prev)
+        assert any(
+            record.name == "httpx" and record.levelno == logging.INFO
+            for record in caplog.records
+        )
+    finally:
+        await client.aclose()

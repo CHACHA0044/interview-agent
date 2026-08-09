@@ -46,8 +46,24 @@ class InternalHttpClient:
         )
         self._retries = max(0, retries)
 
-    async def get_json(self, path: str) -> dict:
-        """GET a JSON resource from an internal service with one bounded retry."""
+    async def get_json(self, path: str, *, quiet: bool = False) -> dict:
+        """GET a JSON resource from an internal service with one bounded retry.
+
+        ``quiet=True`` suppresses the httpx INFO request line around the call so
+        high-frequency, low-signal polling (the frontend LLM-status badge) does
+        not interleave with interview-turn logs during manual analysis.
+        """
+        httpx_logger = logging.getLogger("httpx")
+        if not quiet:
+            return await self._get_json(path)
+        prev_level = httpx_logger.level
+        httpx_logger.setLevel(logging.WARNING)
+        try:
+            return await self._get_json(path)
+        finally:
+            httpx_logger.setLevel(prev_level)
+
+    async def _get_json(self, path: str) -> dict:
         last_exc: Exception | None = None
         for attempt in range(self._retries + 1):
             try:

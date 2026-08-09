@@ -17,6 +17,24 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints import router as internal_ai_router
 from app.api.dependencies import get_provider_status
+import logging
+
+
+class _StatusPollAccessFilter(logging.Filter):
+    """Drop default-level uvicorn access lines for the LLM-status endpoint.
+
+    The gateway proxies GET /internal/ai/llm/status every ~4s for the frontend
+    badge; at INFO that would emit ~15 lines/minute and obscure interview-turn
+    logs. Mirrors the gateway's equivalent filter.
+    """
+
+    _IGNORED = ("/internal/ai/llm/status",)
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return not any(path in record.getMessage() for path in self._IGNORED)
+
+
+logging.getLogger("uvicorn.access").addFilter(_StatusPollAccessFilter())
 
 app = FastAPI(
     title="AI Intelligence Service",
