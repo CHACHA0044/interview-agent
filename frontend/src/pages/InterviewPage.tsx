@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import ReactMarkdown from "react-markdown";
 import { motion } from "motion/react";
-import { Send, Square, Bot, User, Clock, BarChart2, BookOpen, Award } from "lucide-react";
+import { Send, Square, Bot, User, Clock, BarChart2, BookOpen, Award, AlertTriangle, X } from "lucide-react";
 import { Button, Textarea, Badge, Progress } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useInterviewStore } from "@/stores/interview.store";
@@ -21,8 +21,10 @@ export function InterviewPage() {
     messages,
     isAgentTyping,
     feedback,
+    error,
     sendMessage,
     endInterview,
+    clearError,
   } = useInterviewStore();
 
   const [inputAnswer, setInputAnswer] = useState("");
@@ -101,6 +103,24 @@ export function InterviewPage() {
               </Cluster>
             </div>
           </Surface>
+
+          {error ? (
+            <div
+              role="alert"
+              className="flex items-start gap-3 p-4 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30"
+            >
+              <AlertTriangle className="h-4 w-4 text-[#EF4444] shrink-0 mt-0.5" />
+              <p className="text-xs text-[#F87171] leading-relaxed flex-1">{error}</p>
+              <button
+                type="button"
+                onClick={clearError}
+                aria-label="Dismiss error"
+                className="text-[#F87171] hover:text-white transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
 
           <LayoutGrid gap="md" className="items-stretch">
             <aside className="col-span-4 md:col-span-4 xl:col-span-3 order-2 xl:order-1">

@@ -13,8 +13,7 @@ Responsibilities:
 - Acts as the single source of truth for data shapes
 
 Connected Files:
-- src/mock/ (mock data conforms to these types)
-- src/services/ (API responses typed with these)
+- src/services/ (data sources typed with these)
 - src/stores/ (state shapes)
 - src/components/ (props typed with these)
 

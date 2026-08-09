@@ -5,35 +5,29 @@ File:
 services/interview.service.ts
 
 Purpose:
-Service layer for interview session operations.
+Service layer for interview session operations against the live gateway.
 
 Responsibilities:
-- Starts new interview sessions (mock or live gateway)
+- Starts new interview sessions via the gateway /api/interview endpoint
 - Sends candidate messages and receives agent responses
-- Ends interviews and retrieves feedback
-- Branches on runtime settings: mock mode uses canned data, live
-  mode POSTs to the gateway /api/interview endpoint.
+- Caches the real feedback returned by the gateway per session
 
 Connected Files:
-- src/mock/interview.ts (mock mode data source)
-- src/mock/feedback.ts (mock mode feedback data)
-- src/stores/settings.store.ts (mock/live toggle + endpoint)
+- src/stores/settings.store.ts (endpoint + timeout config)
 - src/types/index.ts
 - src/stores/interview.store.ts
 
 Depends On:
-- src/mock/interview.ts
-- src/mock/feedback.ts
 - src/stores/settings.store.ts
 - src/types/index.ts
 - dayjs
 
 Notes:
-Live mode implements the contract from technical-spec.md / agent_api.json:
+Implements the contract from technical-spec.md / agent_api.json:
 - startInterview sends  { sessionId, candidate }
 - sendMessage sends    { sessionId, message }
-Both parse the real { reply, done, feedback } response. Mock mode keeps
-the original simulated latency and canned responses.
+Both parse the real { reply, done, feedback } response. No mock fallbacks:
+request failures throw and surface as real error states.
 
 ========================================================
 */
@@ -45,30 +39,15 @@ import type {
   InterviewFeedback,
   InterviewSession,
 } from "@/types";
-import { MOCK_FEEDBACK, MOCK_QUESTIONS } from "@/mock";
 import { INTERVIEW_CONFIG } from "@/constants";
 import { useSettingsStore } from "@/stores/settings.store";
 import dayjs from "dayjs";
 
-/** Real feedback received from the gateway, keyed by sessionId (live mode). */
+/** Real feedback received from the gateway, keyed by sessionId. */
 const liveFeedbackBySession = new Map<string, InterviewFeedback>();
 
-/** Candidate id per live session, captured at start for feedback mapping. */
+/** Candidate id per session, captured at start for feedback mapping. */
 const liveCandidateBySession = new Map<string, string>();
-
-let questionIndex = 0;
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function isMockMode(): boolean {
-  return useSettingsStore.getState().useMockService;
-}
-
-function mockLatency(): number {
-  return useSettingsStore.getState().simulatedLatencyMs;
-}
 
 function requestTimeoutMs(): number {
   return useSettingsStore.getState().requestTimeoutMs;
@@ -154,11 +133,6 @@ export async function startInterview(
   candidate: Candidate,
   _config?: { questionCount?: number; focusTopics?: string[] }
 ): Promise<{ session: InterviewSession; response: ApiInterviewResponse }> {
-  if (isMockMode()) {
-    await delay(mockLatency());
-    questionIndex = 0;
-  }
-
   const sessionId = `session-${Date.now()}`;
 
   const session: InterviewSession = {
@@ -173,15 +147,6 @@ export async function startInterview(
     duration: 0,
   };
 
-  if (isMockMode()) {
-    const response: ApiInterviewResponse = {
-      reply: `Welcome, ${candidate.member.name}! I'm your AI interviewer for the Enterprise AI Cohort assessment. I'll be asking you a series of technical questions based on the curriculum you completed.\n\nLet me start with your first question:\n\n**${MOCK_QUESTIONS[0]?.question ?? "Tell me about your experience with the cohort."}**`,
-      done: false,
-    };
-
-    return { session, response };
-  }
-
   const response = await postTurn({ sessionId, candidate });
   liveCandidateBySession.set(sessionId, candidate.member.id);
   return { session, response };
@@ -190,38 +155,6 @@ export async function startInterview(
 export async function sendMessage(
   request: ApiInterviewRequest
 ): Promise<ApiInterviewResponse> {
-  if (isMockMode()) {
-    await delay(mockLatency() + Math.random() * 1000);
-    questionIndex++;
-
-    if (questionIndex >= MOCK_QUESTIONS.length) {
-      return {
-        reply:
-          "Thank you for completing the interview! You've demonstrated a strong understanding across the assessed topics. I'm now generating your detailed feedback report.",
-        done: true,
-        feedback: {
-          summary: MOCK_FEEDBACK.summary,
-          strengths: MOCK_FEEDBACK.strengths,
-          gaps: MOCK_FEEDBACK.gaps,
-          next: MOCK_FEEDBACK.next,
-        },
-      };
-    }
-
-    const nextQuestion = MOCK_QUESTIONS[questionIndex];
-    const responses = [
-      `Great answer! Your understanding of the topic is solid. Let me ask you about a related concept.\n\n**${nextQuestion?.question}**`,
-      `Interesting perspective. I can see you've applied this in practice. Let's move on.\n\n**${nextQuestion?.question}**`,
-      `Thank you for that detailed response. Now let's explore a different area.\n\n**${nextQuestion?.question}**`,
-      `Well explained! Your practical experience clearly shows. Next question:\n\n**${nextQuestion?.question}**`,
-    ];
-
-    return {
-      reply: responses[questionIndex % responses.length] ?? responses[0]!,
-      done: false,
-    };
-  }
-
   const response = await postTurn({
     sessionId: request.sessionId,
     message: request.message,
@@ -244,19 +177,11 @@ export async function sendMessage(
 export async function getInterviewFeedback(
   sessionId: string
 ): Promise<InterviewFeedback | null> {
-  if (isMockMode()) {
-    await delay(mockLatency());
-    return MOCK_FEEDBACK;
-  }
   return liveFeedbackBySession.get(sessionId) ?? null;
 }
 
 export async function endInterview(
   sessionId: string
 ): Promise<InterviewFeedback | null> {
-  if (isMockMode()) {
-    await delay(mockLatency());
-    return MOCK_FEEDBACK;
-  }
   return liveFeedbackBySession.get(sessionId) ?? null;
 }

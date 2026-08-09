@@ -304,7 +304,7 @@ export function AboutPage() {
                   <Cpu className="h-4 w-4 text-[#D4AF37]" /> Core Engine
                 </h3>
                 <p className="text-[#A3A3A3] leading-relaxed text-sm transition-colors duration-300 group-hover:text-[#B8B8B8]">
-                  Built with React 19, TypeScript, and Vite with feature-oriented frontend modules and decoupled mock service state handlers.
+                  Built with React 19, TypeScript, and Vite with feature-oriented frontend modules and decoupled API service handlers.
                 </p>
               </div>
 
@@ -313,7 +313,7 @@ export function AboutPage() {
                   <Database className="h-4 w-4 text-[#D4AF37]" /> State & Data Flow
                 </h3>
                 <p className="text-[#A3A3A3] leading-relaxed text-sm transition-colors duration-300 group-hover:text-[#B8B8B8]">
-                  Powered by Zustand for global interview state and TanStack Query for async mock request orchestration.
+                  Powered by Zustand for global interview state and TanStack Query for async request orchestration.
                 </p>
               </div>
             </LayoutGrid>

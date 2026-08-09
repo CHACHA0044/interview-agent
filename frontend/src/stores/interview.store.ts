@@ -63,6 +63,7 @@ interface InterviewState {
   startInterview: (candidate: Candidate) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   endInterview: () => Promise<void>;
+  clearError: () => void;
   incrementTimer: () => void;
   reset: () => void;
 }
@@ -103,8 +104,11 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
         messages: [systemMessage, agentMessage],
         isLoading: false,
       });
-    } catch {
-      set({ error: "Failed to start interview", isLoading: false });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Failed to start interview",
+        isLoading: false,
+      });
     }
   },
 
@@ -154,8 +158,11 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
         const feedbackData = await interviewService.getInterviewFeedback(session.sessionId);
         set({ feedback: feedbackData });
       }
-    } catch {
-      set({ isAgentTyping: false, error: "Failed to send message" });
+    } catch (err) {
+      set({
+        isAgentTyping: false,
+        error: err instanceof Error ? err.message : "Failed to send message",
+      });
     }
   },
 
@@ -166,23 +173,30 @@ export const useInterviewStore = create<InterviewState>((set, get) => ({
     set({ isLoading: true });
     try {
       const feedback = await interviewService.endInterview(session.sessionId);
-      set((state) => ({
-        feedback,
-        isLoading: false,
-        session: state.session
-          ? {
-              ...state.session,
-              status: "COMPLETED",
-              endedAt: dayjs().toISOString(),
-            }
-          : null,
-      }));
-    } catch {
-      set({ error: "Failed to end interview", isLoading: false });
-    }
-  },
+        set((state) => ({
+          feedback,
+          isLoading: false,
+          session: state.session
+            ? {
+                ...state.session,
+                status: "COMPLETED",
+                endedAt: dayjs().toISOString(),
+              }
+            : null,
+        }));
+      } catch (err) {
+        set({
+          error: err instanceof Error ? err.message : "Failed to end interview",
+          isLoading: false,
+        });
+      }
+    },
 
-  incrementTimer: () => {
+    clearError: () => {
+      set({ error: null });
+    },
+
+    incrementTimer: () => {
     set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 }));
   },
 

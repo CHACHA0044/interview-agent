@@ -9,7 +9,7 @@ export function AppFooter() {
           <p>© 2026 {APP_NAME}. Enterprise AI Cohort Evaluation System.</p>
           <p className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[#22C55E]" aria-hidden="true" />
-            Frontend mock services operational
+            Live backend connected
           </p>
         </div>
       </LayoutContainer>

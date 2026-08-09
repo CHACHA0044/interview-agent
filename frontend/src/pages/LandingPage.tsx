@@ -87,11 +87,11 @@ const FEATURES = [
   {
     icon: Zap,
     title: "Instant API Readiness",
-    description: "Decoupled service interfaces simplify migration from mock data to production endpoints.",
+    description: "The frontend talks directly to the live gateway contract with no mock data layer.",
     details: [
-      "Mock/live toggle in Settings switches data source without code changes",
-      "Gateway contract supports candidate intake and message turns",
+      "Live gateway contract for candidate intake and message turns",
       "Service layer isolates backend wiring from UI components",
+      "Request failures surface as real error states, never silent mock fallbacks",
     ],
   },
 ] as const;
@@ -168,15 +168,10 @@ function FeatureCard({ feature }: { feature: (typeof FEATURES)[number] }) {
 }
 
 function useGatewayStatus() {
-  const { useMockService, apiEndpoint } = useSettingsStore();
+  const apiEndpoint = useSettingsStore((state) => state.apiEndpoint);
   const [status, setStatus] = useState<"checking" | "online" | "offline">("checking");
 
   useEffect(() => {
-    if (useMockService) {
-      setStatus("checking");
-      return;
-    }
-
     let cancelled = false;
     setStatus("checking");
 
@@ -192,25 +187,24 @@ function useGatewayStatus() {
     return () => {
       cancelled = true;
     };
-  }, [useMockService, apiEndpoint]);
+  }, [apiEndpoint]);
 
-  return { useMockService, status };
+  return { status };
 }
 
 export function LandingPage() {
   const navigate = useNavigate();
   const { data: candidates } = useCandidates();
   const { data: curriculum } = useCurriculum();
-  const { useMockService, status } = useGatewayStatus();
+  const { status } = useGatewayStatus();
 
   const candidateCount = candidates?.length ?? 0;
   const moduleCount = curriculum?.modules.length ?? 8;
   const dayCount = curriculum?.days.length ?? 31;
 
-  const isLive = !useMockService;
-  const isOnline = isLive && status === "online";
-  const isOffline = isLive && status === "offline";
-  const isChecking = isLive && status === "checking";
+  const isOnline = status === "online";
+  const isOffline = status === "offline";
+  const isChecking = status === "checking";
 
   return (
     <PageTransition>
@@ -270,7 +264,7 @@ export function LandingPage() {
                         "h-2.5 w-2.5 rounded-full",
                         isOnline ? "bg-[#22C55E]" : isOffline ? "bg-[#EF4444]" : "bg-[#D4AF37]"
                       )}
-                      animate={isChecking || (useMockService && status === "checking") ? { opacity: [1, 0.4, 1] } : undefined}
+                      animate={isChecking ? { opacity: [1, 0.4, 1] } : undefined}
                       transition={{ duration: 1.2, repeat: Infinity }}
                     />
                     <span className="text-white font-semibold">COHORT ASSESSOR v1.0</span>
@@ -280,7 +274,7 @@ export function LandingPage() {
                       isOnline ? "text-[#22C55E]" : isOffline ? "text-[#EF4444]" : "text-[#D4AF37]"
                     )}
                   >
-                    {useMockService ? "SIMULATED" : isOnline ? "ONLINE" : isOffline ? "OFFLINE" : "CONNECTING"}
+                    {isOnline ? "ONLINE" : isOffline ? "OFFLINE" : "CONNECTING"}
                   </span>
                 </div>
 
@@ -320,21 +314,19 @@ export function LandingPage() {
                       <div>
                         <span className="text-xs font-semibold text-white block">Evaluation Mode</span>
                         <span className="text-[10px] text-[#737373]">
-                          {useMockService
-                            ? "Mock Services Operational"
-                            : isOnline
-                              ? "Live Gateway Connected"
-                              : isOffline
-                                ? "Gateway Unreachable"
-                                : "Checking Gateway Health"}
+                          {isOnline
+                            ? "Live Gateway Connected"
+                            : isOffline
+                              ? "Gateway Unreachable"
+                              : "Checking Gateway Health"}
                         </span>
                       </div>
                     </div>
                     <Badge
-                      variant={isOnline ? "success" : isOffline ? "danger" : useMockService ? "warning" : "gold"}
+                      variant={isOnline ? "success" : isOffline ? "danger" : "gold"}
                       className="text-[10px]"
                     >
-                      {useMockService ? "Simulated" : isOnline ? "Online" : isOffline ? "Offline" : "Checking"}
+                      {isOnline ? "Online" : isOffline ? "Offline" : "Checking"}
                     </Badge>
                   </div>
                 </Stack>
