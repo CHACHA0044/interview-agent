@@ -11,9 +11,8 @@ the keepalive/self-ping status.
 Responsibilities:
 - Polls the gateway /health endpoint on a cadence
 - Derives online / degraded / offline state
-- Exposes the session store kind (redis vs in-memory) and the
-  gateway session TTL so UI can explain a degraded deployment
-- Surfaces underlying network / CORS errors for live debugging
+- Exposes the session store kind (redis vs in-memory) and gateway session TTL
+- Distinguishes client-side extension blockers (ERR_BLOCKED_BY_CLIENT / Brave Shields) from CORS or network timeouts
 
 ========================================================
 */
@@ -31,6 +30,7 @@ export interface GatewayHealth {
   ttlSeconds: number | null;
   lastChecked: string | null;
   lastError?: string | null;
+  isBlockedByClient?: boolean;
 }
 
 interface HealthCheck {
@@ -50,6 +50,7 @@ export function useGatewayHealth(pollMs: number = GATEWAY_HEALTH_POLL_MS): Gatew
     ttlSeconds: null,
     lastChecked: null,
     lastError: null,
+    isBlockedByClient: false,
   });
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export function useGatewayHealth(pollMs: number = GATEWAY_HEALTH_POLL_MS): Gatew
             status: "offline",
             storeType: "unknown",
             lastError: "Base URL is empty",
+            isBlockedByClient: false,
           }));
         }
         return;
@@ -87,6 +89,7 @@ export function useGatewayHealth(pollMs: number = GATEWAY_HEALTH_POLL_MS): Gatew
             ttlSeconds,
             lastChecked: new Date().toISOString(),
             lastError: null,
+            isBlockedByClient: false,
           });
         } else {
           // Reachable but degraded — e.g. 503 when Redis is down and gateway uses in-memory store.
@@ -96,19 +99,34 @@ export function useGatewayHealth(pollMs: number = GATEWAY_HEALTH_POLL_MS): Gatew
             ttlSeconds,
             lastChecked: new Date().toISOString(),
             lastError: `Gateway returned status ${response.status} (store: ${storeType})`,
+            isBlockedByClient: false,
           });
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : String(err);
+        const errorName = err instanceof Error ? err.name : "";
+        const isTimeout = errorMsg.includes("abort") || errorName === "TimeoutError";
+
+        // Detect client-side blocker (e.g. Brave Shields / uBlock / ERR_BLOCKED_BY_CLIENT / TypeError: Failed to fetch)
+        const isBlockedByClient =
+          !isTimeout &&
+          (errorMsg.includes("BLOCKED_BY_CLIENT") ||
+            errorMsg.includes("blocked") ||
+            errorMsg.includes("Failed to fetch") ||
+            errorName === "TypeError");
+
         console.warn("[Gateway Health Probe Failed]:", err);
         if (!cancelled) {
           setHealth((h) => ({
             ...h,
             status: "offline",
             lastChecked: new Date().toISOString(),
-            lastError: errorMsg.includes("abort")
+            isBlockedByClient,
+            lastError: isTimeout
               ? "Health request timed out (6s)"
-              : `Network/CORS error: ${errorMsg}`,
+              : isBlockedByClient
+                ? "Health check probe blocked by browser extension (ad blocker / privacy shield)."
+                : `Network error: ${errorMsg}`,
           }));
         }
       }

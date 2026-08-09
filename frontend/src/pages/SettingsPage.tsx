@@ -268,14 +268,27 @@ export function SettingsPage() {
                 </div>
                 <p className="text-[11px] text-[#737373] leading-relaxed">{visual.text}</p>
                 {health.lastError ? (
-                  <p className="text-[11px] text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/20 p-2.5 rounded-lg font-mono leading-relaxed">
-                    Diagnostic: {health.lastError}
-                    {health.status === "offline" && (
-                      <span className="block text-[10px] text-[#F87171] mt-1 font-sans">
-                        Note: If the backend is running on Render, ensure FRONTEND_ORIGINS on Render includes your Vercel frontend URL to allow cross-origin health checks.
+                  health.isBlockedByClient ? (
+                    <div className="p-3 rounded-lg bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[11px] text-[#F3E5AB] leading-relaxed">
+                      <span className="font-semibold block text-[#D4AF37] mb-0.5">
+                        Client Blocker Detected (AdBlock / Brave Shield):
                       </span>
-                    )}
-                  </p>
+                      The health probe was blocked client-side by a browser extension or Brave Shield.
+                      Try disabling shields for this domain if you want live status polling.
+                      <span className="block text-[10px] text-[#A3A3A3] mt-1 font-mono">
+                        Interview functionality (start, turns, evaluation) operates on API endpoints and remains fully functional.
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/20 p-2.5 rounded-lg font-mono leading-relaxed">
+                      Diagnostic: {health.lastError}
+                      {health.status === "offline" && (
+                        <span className="block text-[10px] text-[#F87171] mt-1 font-sans">
+                          Note: If the backend is running on Render, ensure FRONTEND_ORIGINS on Render includes your Vercel frontend URL.
+                        </span>
+                      )}
+                    </p>
+                  )
                 ) : null}
                 <p className="text-[10px] font-mono text-[#525252]">
                   session store: {health.storeType}
