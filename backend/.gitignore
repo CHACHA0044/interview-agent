@@ -3,3 +3,6 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# e2e harness generated run artifacts (regenerated on every pytest run)
+tests_e2e/transcripts/
