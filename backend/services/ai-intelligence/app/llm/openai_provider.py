@@ -105,3 +105,7 @@ class OpenAICompatibleProvider(ChatProvider):
             return True
         except Exception:
             return False
+
+    def degraded(self) -> bool:
+        """The OpenAI-compatible provider has no key pool; never short-circuits."""
+        return False

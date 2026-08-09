@@ -201,6 +201,38 @@ export interface InterviewLiveMetadata {
 }
 
 /* ========================================
+   LLM Provider Failover Types
+   ======================================== */
+
+export interface ProviderSlot {
+  label: string;
+  display: string;
+  active: boolean;
+}
+
+export interface ProviderRotation {
+  seq: number;
+  at: number;
+  from: string;
+  to: string;
+  retry_after_seconds: number | null;
+  reason: string;
+}
+
+export interface ProviderStatus {
+  provider: string;
+  primary_model?: string;
+  fallback_model?: string;
+  active_slot: string;
+  all_exhausted: boolean;
+  fake_active?: boolean;
+  slots: ProviderSlot[];
+  last_rotation: ProviderRotation | null;
+  rotations: ProviderRotation[];
+  status_error?: string;
+}
+
+/* ========================================
    UI Types
    ======================================== */
 

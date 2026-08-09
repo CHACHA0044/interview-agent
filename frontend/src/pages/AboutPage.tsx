@@ -59,7 +59,7 @@ const FLOW_STEPS: FlowStepData[] = [
   },
 ];
 
-const AUTOPLAY_INTERVAL_MS = 3000;
+const AUTOPLAY_INTERVAL_MS = 2500;
 
 function FlowConnector() {
   const prefersReducedMotion = useReducedMotion();
@@ -141,17 +141,17 @@ function FlowStep({
   step,
   index,
   active = false,
-  paused = false,
 }: {
   step: FlowStepData;
   index: number;
   active?: boolean;
-  paused?: boolean;
 }) {
   const [isLocallyOpen, setIsLocallyOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const Icon = step.icon;
-  const isExpanded = active || isLocallyOpen;
+  // Expansion is strictly user-driven (click, hover, or focus). The autoplay
+  // `active` flag only highlights the current step — it never opens a card.
+  const isExpanded = isLocallyOpen;
 
   return (
     <motion.div
@@ -164,10 +164,12 @@ function FlowStep({
       transition={{ type: "spring", stiffness: 280, damping: 22 }}
       tabIndex={0}
       className={cn(
-        "group relative flex-1 min-w-0 cursor-pointer rounded-2xl border bg-[#0F0F0F] p-5 outline-none transition-colors duration-300",
+        "group relative flex-1 min-w-0 cursor-pointer rounded-2xl border bg-[#0F0F0F] p-5 outline-none transition-colors duration-300 flex flex-col",
         isExpanded
           ? "border-[#D4AF37]/45 bg-[#131313]"
-          : "border-[#262626] hover:border-[#D4AF37]/30",
+          : active
+            ? "border-[#D4AF37]/30"
+            : "border-[#262626] hover:border-[#D4AF37]/30",
         "focus-visible:ring-1 focus-visible:ring-[#D4AF37]/60"
       )}
     >
@@ -190,34 +192,29 @@ function FlowStep({
         </motion.span>
       </div>
 
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            key="description"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className="overflow-hidden"
-          >
-            <p className="mt-3 pt-3 text-xs leading-relaxed text-[#B5B5B5] border-t border-[#262626]">
-              {step.description}
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {active ? (
+        <span className="absolute top-4 right-12 h-1.5 w-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
+      ) : null}
 
-      {!prefersReducedMotion && active && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-2xl bg-[#D4AF37]/15 overflow-hidden">
-          <motion.div
-            key="autoplay-progress"
-            className="h-full bg-[#D4AF37]"
-            initial={{ width: "0%" }}
-            animate={paused ? undefined : { width: "100%" }}
-            transition={{ duration: AUTOPLAY_INTERVAL_MS / 1000, ease: "linear" }}
-          />
-        </div>
-      )}
+      {/* Fixed-height slot: reserves space up front so expanding/contracting a
+          card never reflows the row or pushes content below the flow down. */}
+      <div className="h-28 overflow-hidden">
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              key="description"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <p className="mt-3 pt-3 text-xs leading-relaxed text-[#B5B5B5] border-t border-[#262626]">
+                {step.description}
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 }
@@ -244,7 +241,7 @@ function AgentFlow() {
       {FLOW_STEPS.map((step, index) => (
         <Fragment key={step.title}>
           {index > 0 && <FlowConnector />}
-          <FlowStep step={step} index={index} active={index === activeIndex} paused={isPaused} />
+          <FlowStep step={step} index={index} active={index === activeIndex} />
         </Fragment>
       ))}
     </div>

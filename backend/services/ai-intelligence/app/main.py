@@ -16,6 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints import router as internal_ai_router
+from app.api.dependencies import get_provider_status
 
 app = FastAPI(
     title="AI Intelligence Service",
@@ -44,5 +45,6 @@ def root_health():
         "status": "ok",
         "service": "ai-intelligence",
         "provider": settings.llm_provider,
+        "llm": get_provider_status(),
     }
 

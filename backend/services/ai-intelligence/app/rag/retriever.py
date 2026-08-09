@@ -79,6 +79,40 @@ def _qdrant_chunks(search_result) -> List[dict]:
     return chunks
 
 
+def _qdrant_search(
+    client: QdrantClient,
+    *,
+    collection_name: str,
+    query_vector,
+    query_filter,
+    limit: int,
+    score_threshold,
+):
+    """
+    Executes a dense-vector search against Qdrant across SDK versions.
+
+    qdrant-client >= 1.19 removed ``QdrantClient.search`` in favor of
+    ``query_points``; older versions (>= 1.9) still support ``search``. Prefer
+    ``query_points`` and degrade to the legacy method when unavailable.
+    """
+    if hasattr(client, "query_points"):
+        response = client.query_points(
+            collection_name=collection_name,
+            query=query_vector,
+            query_filter=query_filter,
+            limit=limit,
+            score_threshold=score_threshold,
+        )
+        return response.points
+    return client.search(
+        collection_name=collection_name,
+        query_vector=query_vector,
+        query_filter=query_filter,
+        limit=limit,
+        score_threshold=score_threshold,
+    )
+
+
 def retrieve(
     query: str,
     llm_provider: ChatProvider,
@@ -125,7 +159,8 @@ def retrieve(
     query_filter = build_metadata_filter(filters)
 
     try:
-        search_result = qdrant_client.search(  # type: ignore
+        search_result = _qdrant_search(  # type: ignore
+            qdrant_client,
             collection_name=settings.qdrant_collection,
             query_vector=query_embedding,
             query_filter=query_filter,

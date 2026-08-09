@@ -51,6 +51,18 @@ def generate_structured_output(
     if not hasattr(model_class, "fallback") or not callable(getattr(model_class, "fallback")):
         raise TypeError(f"The model {model_class.__name__} must implement a fallback() method.")
 
+    # Short-circuit when every provider/key in the failover chain is down: burning
+    # retries would only produce fake placeholder output. Return the schema-complete
+    # fallback immediately (never fabricates data, always validates).
+    degraded = getattr(provider, "degraded", None)
+    if callable(degraded) and degraded():
+        logger.warning(
+            "[AI] structured_output_degraded model=%s - all providers exhausted, "
+            "using fallback (no retries burned)",
+            model_class.__name__,
+        )
+        return model_class.fallback()
+
     attempts = 0
     last_exception: Exception | None = None
     

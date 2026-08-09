@@ -46,6 +46,35 @@ class InternalHttpClient:
         )
         self._retries = max(0, retries)
 
+    async def get_json(self, path: str) -> dict:
+        """GET a JSON resource from an internal service with one bounded retry."""
+        last_exc: Exception | None = None
+        for attempt in range(self._retries + 1):
+            try:
+                response = await self._client.get(path)
+            except _RETRYABLE_EXC as exc:
+                last_exc = exc
+                if attempt < self._retries:
+                    continue
+                raise UpstreamUnavailableError(
+                    f"upstream transport failure: {exc}"
+                ) from exc
+
+            if response.status_code < 400:
+                return response.json()
+
+            if 400 <= response.status_code < 500:
+                raise UpstreamError(
+                    f"upstream returned {response.status_code} for {path}: "
+                    f"{response.text[:200]}"
+                )
+            if attempt < self._retries:
+                continue
+            raise UpstreamUnavailableError(
+                f"upstream returned {response.status_code} for {path}"
+            )
+        raise UpstreamUnavailableError(str(last_exc))
+
     async def post_json(self, path: str, payload: dict) -> dict:
         last_exc: Exception | None = None
         for attempt in range(self._retries + 1):

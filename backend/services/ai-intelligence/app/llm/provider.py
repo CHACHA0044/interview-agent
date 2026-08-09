@@ -64,3 +64,15 @@ class ChatProvider(Protocol):
             True if the provider is available, False otherwise.
         """
         ...
+
+    def degraded(self) -> bool:
+        """
+        Check whether the provider is entirely out of service (e.g. every
+        configured key/provider is rate-limited).
+
+        Returns:
+            True when the provider can no longer serve requests, False otherwise.
+            Used by structured-output generation to short-circuit to the
+            schema-complete fallback instead of burning retries.
+        """
+        ...

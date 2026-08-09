@@ -24,7 +24,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from qdrant_client import QdrantClient
 
-from app.api.dependencies import get_llm_provider, get_qdrant_client
+from app.api.dependencies import get_llm_provider, get_provider_status, get_qdrant_client
 from app.core.config import settings
 from app.llm.provider import ChatProvider
 
@@ -57,7 +57,19 @@ def health_check():
         "status": "ok",
         "service": "ai-intelligence",
         "provider": settings.llm_provider,
+        "llm": get_provider_status(),
     }
+
+
+@router.get("/llm/status", status_code=status.HTTP_200_OK)
+def llm_status():
+    """Live provider failover snapshot for the frontend status indicator.
+
+    Mirrors the health payload's `llm` block but exposes the full chain state
+    (active slot, per-key activation, exhaustion, rotation history) without
+    any API keys. Consumed by the gateway's public GET /api/llm/status.
+    """
+    return get_provider_status()
 
 
 @router.post("/generate-question", response_model=GeneratedQuestion)

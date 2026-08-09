@@ -33,3 +33,4 @@ export { EmptyState } from "./EmptyState";
 export { Progress } from "./Progress";
 export { Avatar } from "./Avatar";
 export { CustomSelect } from "./CustomSelect";
+export { ProviderStatusBadge } from "./ProviderStatusBadge";

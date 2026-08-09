@@ -46,7 +46,7 @@ def test_retrieve_success():
     mock_llm.embed.return_value = [[0.1, 0.2]]
 
     mock_qdrant = MagicMock()
-    mock_qdrant.search.return_value = [
+    mock_qdrant.query_points.return_value.points = [
         ScoredPoint(
             id="test-id-1",
             version=1,

@@ -56,6 +56,26 @@ def test_health_check():
         assert response.json()["status"] == "ok"
 
 
+def test_llm_status_endpoint():
+    """Verify the failover snapshot exposes chain state without keys."""
+    fake_provider = MagicMock()
+    fake_provider.status.return_value = {
+        "provider": "groq",
+        "active_slot": "Groq key 1",
+        "all_exhausted": False,
+        "rotations": [],
+        "last_rotation": None,
+    }
+    with patch("app.api.endpoints.get_provider_status", return_value=fake_provider.status.return_value):
+        response = client.get("/internal/ai/llm/status")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["provider"] == "groq"
+        assert body["active_slot"] == "Groq key 1"
+        assert body["all_exhausted"] is False
+        assert body["rotations"] == []
+
+
 @patch("app.api.endpoints.generate_interview_question")
 def test_generate_question_endpoint(mock_generate):
     mock_generate.return_value = GeneratedQuestion(

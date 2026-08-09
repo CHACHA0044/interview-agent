@@ -17,6 +17,7 @@ Connected Files:
 """
 
 import hashlib
+import json
 from typing import Any, Dict, List
 
 
@@ -39,6 +40,10 @@ class FakeLLMProvider:
         Returns a fixed deterministic completion. Service-layer generators
         detect FakeLLMProvider and produce structured outputs directly, so this
         path is only hit by direct provider consumers.
+
+        When json_mode is requested the output is still valid, parseable JSON
+        (even though it does not match any specific Pydantic schema) so that
+        upstream JSON parsing never crashes on a non-JSON string.
         """
         last_user = ""
         for message in reversed(messages):
@@ -47,6 +52,10 @@ class FakeLLMProvider:
                 break
         preview = last_user.strip().splitlines()
         snippet = preview[0][:80] if preview else "no prompt"
+
+        if json_mode:
+            return json.dumps({"fake": True, "note": f"fake-completion based on: {snippet}"})
+
         return f"[fake-completion] based on: {snippet}"
 
     def embed(self, texts: List[str]) -> List[List[float]]:
@@ -63,3 +72,7 @@ class FakeLLMProvider:
     def available(self) -> bool:
         """A fake provider is always available."""
         return True
+
+    def degraded(self) -> bool:
+        """A fake provider never degrades."""
+        return False

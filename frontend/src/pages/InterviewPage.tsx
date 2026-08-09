@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import ReactMarkdown from "react-markdown";
 import { motion } from "motion/react";
 import { Send, Square, Bot, User, Clock, TimerReset, BarChart2, BookOpen, Award, AlertTriangle, X, Plus } from "lucide-react";
-import { Button, Textarea, Badge, Progress } from "@/components/ui";
+import { Button, Textarea, Badge, Progress, ProviderStatusBadge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useSettingsStore } from "@/stores/settings.store";
@@ -115,6 +115,7 @@ export function InterviewPage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-[#22C55E] animate-pulse" />
                 <span className="text-xs font-mono font-bold text-white">SESSION ID: {sessionId}</span>
                 <Badge variant="gold" className="text-[10px]">ADAPTIVE EVALUATION</Badge>
+                <ProviderStatusBadge />
               </Cluster>
 
               <Cluster gap="sm">

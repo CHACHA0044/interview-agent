@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     groq_api_key: Optional[str] = None
     groq_model: str = "llama-3.3-70b-versatile"
     groq_fallback_model: str = "llama-3.1-8b-instant"
+    # Additional rotated keys GROQ_API_KEY_2 ... GROQ_API_KEY_N are read directly
+    # from the environment by app.llm.groq_key_pool (pydantic ignores extra vars).
+    groq_recovery_interval_seconds: float = 300.0
+
+    # Cerebras Provider Configuration (second step of the failover chain)
+    cerebras_api_key: Optional[str] = None
+    cerebras_model: str = "llama-3.3-70b"
+    cerebras_base_url: str = "https://api.cerebras.ai/v1"
 
     # Qdrant Configuration
     qdrant_url: str = "http://localhost:6333"

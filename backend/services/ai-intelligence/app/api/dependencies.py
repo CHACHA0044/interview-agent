@@ -46,3 +46,25 @@ def get_qdrant_client() -> QdrantClient:
             # Fallback to local memory mode for tests if not provided
             _qdrant_client = QdrantClient(location=":memory:")
     return _qdrant_client
+
+
+def get_provider_status() -> dict:
+    """Observability snapshot of the active LLM provider (never exposes keys).
+
+    Used by the health endpoints so the gateway/frontend can surface the current
+    active provider/key and exhaustion state (e.g. "Groq 6/9 keys active").
+    """
+    provider = get_llm_provider()
+    status_method = getattr(provider, "status", None)
+    if callable(status_method):
+        try:
+            status = status_method()
+            if isinstance(status, dict):
+                return status
+        except Exception as e:  # pragma: no cover - defensive
+            return {"provider": type(provider).__name__, "status_error": str(e)}
+    return {
+        "provider": type(provider).__name__,
+        "configured": True,
+        "all_exhausted": False,
+    }

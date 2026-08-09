@@ -13,7 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api import interview
+from app.api import interview, status
 from app.clients.agent_client import AgentClient
 from app.clients.base import InternalHttpClient
 from app.core.config import Settings, get_settings
@@ -121,6 +121,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.agent_client = AgentClient(agent_http)
 
+    ai_http = InternalHttpClient(
+        base_url=settings.ai_service_url,
+        connect_timeout=settings.connect_timeout_seconds,
+        request_timeout=settings.request_timeout_seconds,
+        retries=settings.retries,
+        token=settings.internal_api_token,
+    )
+    app.state.ai_client = ai_http
+
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -130,6 +139,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
 
     app.include_router(interview.router)
+    app.include_router(status.router)
 
     @app.exception_handler(APIError)
     async def _api_error_handler(request: Request, exc: APIError) -> JSONResponse:

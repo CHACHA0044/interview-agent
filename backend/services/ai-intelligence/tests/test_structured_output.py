@@ -26,6 +26,7 @@ from app.schemas.ai_output import EvaluationOutput, FeedbackOutput
 def test_valid_json_returns_model():
     """Verify that a valid JSON string is parsed into the expected model immediately."""
     mock_provider = MagicMock()
+    mock_provider.degraded.return_value = False
     valid_eval = {
         "score": 8.5,
         "conceptCoverage": 0.9,
@@ -49,6 +50,7 @@ def test_valid_json_returns_model():
 def test_malformed_json_retries_then_succeeds():
     """Verify that a JSONDecodeError triggers a retry."""
     mock_provider = MagicMock()
+    mock_provider.degraded.return_value = False
     
     malformed_json = '{"score": 8.5, "conceptCoverage": 0.9' # Missing closing brace
     valid_json = '{"score": 8.5, "conceptCoverage": 0.9, "technicalAccuracy": 0.8, "depth": 0.8, "strengths": [], "gaps": [], "followUpRequired": false, "notes": "ok"}'
@@ -65,6 +67,7 @@ def test_malformed_json_retries_then_succeeds():
 def test_validation_error_retries_then_succeeds():
     """Verify that missing fields trigger a Pydantic ValidationError and a retry."""
     mock_provider = MagicMock()
+    mock_provider.degraded.return_value = False
     
     invalid_json = '{"score": 8.5}' # Missing required fields
     valid_json = '{"score": 8.5, "conceptCoverage": 0.9, "technicalAccuracy": 0.8, "depth": 0.8, "strengths": [], "gaps": [], "followUpRequired": false, "notes": "ok"}'
@@ -81,6 +84,7 @@ def test_validation_error_retries_then_succeeds():
 def test_exhausted_retries_returns_fallback():
     """Verify that failing all retries returns the deterministic fallback."""
     mock_provider = MagicMock()
+    mock_provider.degraded.return_value = False
     
     # Always return broken JSON
     mock_provider.complete.return_value = '{"not": "valid"}'
@@ -98,6 +102,7 @@ def test_exhausted_retries_returns_fallback():
 def test_provider_exception_returns_fallback():
     """Verify that if the provider itself throws an exception, it falls back."""
     mock_provider = MagicMock()
+    mock_provider.degraded.return_value = False
     mock_provider.complete.side_effect = Exception("Network Error")
 
     result = generate_structured_output(mock_provider, [{"role": "user"}], FeedbackOutput, max_retries=0)
