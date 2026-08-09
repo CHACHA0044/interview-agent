@@ -41,7 +41,9 @@ class Settings(BaseSettings):
 
     # Cerebras Provider Configuration (second step of the failover chain)
     cerebras_api_key: Optional[str] = None
-    cerebras_model: str = "llama-3.3-70b"
+    # Default matches app.llm.cerebras_provider.CEREBRAS_DEFAULT_MODEL; must be a
+    # model the account actually exposes (Groq model IDs are NOT valid here).
+    cerebras_model: str = "gemma-4-31b"
     cerebras_base_url: str = "https://api.cerebras.ai/v1"
 
     # Qdrant Configuration

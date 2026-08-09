@@ -37,6 +37,16 @@ function resolveHealthVisual(health: GatewayHealth): HealthVisual {
     };
   }
 
+  if (status === "unknown") {
+    return {
+      dot: "bg-[#F59E0B]",
+      label: "Status Unknown · Probe Blocked",
+      text: health.isBlockedByClient
+        ? "The health probe was blocked client-side by a browser extension or Brave Shield. The gateway may be reachable, but its live status cannot be verified from this browser."
+        : "Could not verify gateway status from this browser — it may be blocked or unreachable.",
+    };
+  }
+
   const storeLabel = isRedis ? " · Redis" : storeType === "in-memory" ? " · In-Memory Store" : "";
 
   if (status === "online") {
@@ -126,7 +136,7 @@ export function SettingsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-white">{visual.label}</span>
                   <Badge
-                    variant={health.status === "online" ? "success" : health.status === "degraded" ? "warning" : health.status === "offline" ? "danger" : "gold"}
+                    variant={health.status === "online" ? "success" : health.status === "offline" ? "danger" : health.status === "unknown" || health.status === "degraded" ? "warning" : "gold"}
                     className="text-[10px]"
                   >
                     {health.status.toUpperCase()}

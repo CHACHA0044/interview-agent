@@ -13,7 +13,9 @@ export function AppFooter() {
         ? { dot: "bg-[#F59E0B]", label: "Gateway degraded · in-memory store" }
         : status === "offline"
           ? { dot: "bg-[#EF4444]", label: "Gateway unreachable" }
-          : { dot: "bg-[#D4AF37]", label: "Checking gateway…" };
+          : status === "unknown"
+            ? { dot: "bg-[#F59E0B]", label: "Gateway status unknown · probe blocked" }
+            : { dot: "bg-[#D4AF37]", label: "Checking gateway…" };
 
   return (
     <footer className="border-t border-[#1F1F1F] mt-16">

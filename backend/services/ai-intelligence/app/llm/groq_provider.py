@@ -23,7 +23,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 import openai
 from openai import OpenAI
 
-from app.llm.cerebras_provider import CerebrasProvider
+from app.llm.cerebras_provider import CEREBRAS_DEFAULT_MODEL, CerebrasProvider
 from app.llm.fake_provider import FakeLLMProvider
 from app.llm.groq_key_pool import (
     DEFAULT_RECOVERY_INTERVAL_SECONDS,
@@ -90,14 +90,19 @@ class GroqProvider(ChatProvider):
         self.recovery_interval_seconds = recovery_interval_seconds
 
         self._pool = GroqKeyPool(keys, recovery_interval_seconds=recovery_interval_seconds)
+        # max_retries=0: the openai SDK's internal backoff (up to tens of seconds
+        # per attempt) would otherwise defeat the provider-level failover chain,
+        # which is designed to rotate to the next key/model promptly on a 429.
         self._clients: Dict[int, OpenAI] = {
-            key.index: OpenAI(api_key=key.secret, base_url=base_url)
+            key.index: OpenAI(
+                api_key=key.secret, base_url=base_url, max_retries=0
+            )
             for key in self._pool.keys()
         }
         if cerebras_api_key:
             self._cerebras = CerebrasProvider(
                 api_key=cerebras_api_key,
-                model=cerebras_model or "llama-3.3-70b",
+                model=cerebras_model or CEREBRAS_DEFAULT_MODEL,
                 base_url=cerebras_base_url or "https://api.cerebras.ai/v1",
             )
         else:
@@ -239,6 +244,7 @@ class GroqProvider(ChatProvider):
         retry_after) when the key hit a rate limit on all attempts; ("error",
         None) for non-rate-limit failures.
         """
+        saw_rate_limit = False
         last_retry_after: Optional[float] = None
         for model in (self.model, self.fallback_model):
             try:
@@ -250,6 +256,7 @@ class GroqProvider(ChatProvider):
                 )
                 return (_OUTCOME_OK, content)
             except openai.RateLimitError as e:
+                saw_rate_limit = True
                 last_retry_after = extract_retry_after_seconds(e)
                 logger.warning(
                     "[AI] groq_rate_limit key=%s model=%s retry_after=%s",
@@ -272,7 +279,10 @@ class GroqProvider(ChatProvider):
                 )
                 continue
 
-        if last_retry_after is not None:
+        if saw_rate_limit:
+            # A 429 on any model attempt exhausts the key. Cool it down with the
+            # parsed retry hint when present, else the default cooldown, so the
+            # chain actually rotates away instead of hammering the same key.
             self._pool.exhaust(key, last_retry_after)
             return (_OUTCOME_EXHAUSTED, last_retry_after)
         return (_OUTCOME_ERROR, None)

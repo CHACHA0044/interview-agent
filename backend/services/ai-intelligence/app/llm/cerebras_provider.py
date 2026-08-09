@@ -28,7 +28,11 @@ from app.llm.provider import ChatProvider
 
 logger = logging.getLogger(__name__)
 
-CEREBRAS_DEFAULT_MODEL = "llama-3.3-70b"
+# Model identifiers differ between Cerebras and Groq - never assume a Groq model
+# (e.g. "llama-3.3-70b-versatile") is valid on Cerebras. This default is one of
+# the models actually exposed by the account tied to CEREBRAS_API_KEY (verified
+# via GET /v1/models; "llama-3.3-70b" returns 404 model_not_found on it).
+CEREBRAS_DEFAULT_MODEL = "gemma-4-31b"
 CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1"
 
 
@@ -47,7 +51,7 @@ class CerebrasProvider(ChatProvider):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url
-        self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self.client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
 
         self.exhausted_at: Optional[float] = None
         self.retry_after: Optional[float] = None

@@ -17,6 +17,7 @@ Connected Files:
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -28,6 +29,15 @@ from app.services.curriculum_loader import CurriculumLoader
 from app.services.orchestrator import InterviewOrchestrator
 
 logger = logging.getLogger(__name__)
+
+# Honor LOG_LEVEL env (INFO for live evidence runs; WARNING default). Without
+# this, the root logger's WARNING default suppresses the structured [AGENT]
+# INFO lines consumed by tests_e2e/live_interview.py. basicConfig adds a root
+# handler when none exists (uvicorn only configures its own loggers), otherwise
+# the lastResort WARNING handler silently drops INFO even with root level set.
+_agent_log_level = os.getenv("LOG_LEVEL", "WARNING").upper()
+logging.basicConfig(level=_agent_log_level, format="%(levelname)s: %(message)s")
+logging.getLogger().setLevel(_agent_log_level)
 
 
 @asynccontextmanager

@@ -51,7 +51,7 @@ class GeneratedQuestion(BaseModel):
     type: str = Field("technical", description="The question type, usually 'technical'")
     difficulty: str = Field(..., description="The difficulty level")
     topic: str = Field(..., description="The main topic")
-    day: int = Field(..., description="The curriculum day")
+    day: int = Field(0, description="The curriculum day (always overwritten from the question strategy by the service)")
     expectedConcepts: List[str] = Field(default_factory=list, description="Key terms expected in the answer")
     retrievedContext: List[RetrievedChunk] = Field(default_factory=list)
 

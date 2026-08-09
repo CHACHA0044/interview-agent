@@ -1,391 +1,231 @@
-# AI Usage Log — The Interview Agent
+# Interview Agent — Development Prompts
 
-This document logs the prompts used with Claude/AI tools throughout development,
-organized by phase. Full raw transcripts are in `/prompts/` if longer excerpts are needed.
+## Table of Contents
 
-## Overview
-- Primary AI tools used: [Claude / OpenCode / AntiGravity IDE / ChatGpt]
-- Development approach: iterative "vibe-coding" — audit → fix → verify → repeat
-- Total sessions: [15] across [7th of Aug 8:00 PM - 9th of Aug 8:00 PM]
+- [Phase 0 — Initial Frontend](#phase-0--initial-frontend)
+- [Phase 1 — Backend Audit & Deployment Preparation](#phase-1--backend-audit--deployment-preparation)
+- [Phase 2 — Backend Verification & Bug Fixes](#phase-2--backend-verification--bug-fixes)
+- [Phase 3 — Frontend Data Wiring](#phase-3--frontend-data-wiring)
+- [Phase 4 — Agent Quality & Multi-Provider Resilience](#phase-4--agent-quality--multi-provider-resilience)
+- [Phase 5 — Live Testing & Bug Discovery](#phase-5--live-testing--bug-discovery)
+- [Phase 6 — Frontend Polish](#phase-6--frontend-polish)
+- [Overall Development Timeline](#overall-development-timeline)
+- [Final Project Architecture](#final-project-architecture)
+- [Phase Summary](#phase-summary)
 
 ## Phase 0 — Initial Frontend
-**Goal:** Build the initial frontend foundation for The Interview Agent hackathon project before implementing the backend. The frontend needed to communicate the idea of a serious enterprise technical-assessment platform rather than looking like a generic AI chatbot.
 
-The initial objective was to create a functional frontend foundation around the hackathon problem statement, using the provided candidate profiles, curriculum, technical specification, and existing interview-agent repository as the project base.
+### Goal
 
-The frontend was intentionally designed first so the team could establish the complete product flow and UI structure before connecting the real backend services.
+Build the initial frontend foundation for The Interview Agent and establish the overall product experience before implementing the real backend.
 
-**Prompts used:** 
-1. Initial project and frontend foundation prompt
+The frontend needed to represent an enterprise technical assessment platform rather than a generic AI chatbot.
 
-The first major prompt instructed the AI coding agent to establish the project foundation and frontend first.
+The interface needed to support the eventual flow:
 
-Prompt summary:
-Build the base of the project for the hackathon problem statement:
+```text
+Candidate Selection
+        ↓
+Interview Configuration
+        ↓
+Technical Interview
+        ↓
+Adaptive Questions
+        ↓
+Evaluation
+        ↓
+Final Feedback
+```
 
-"The Interview Agent — Build the interviewer, not the interview."
+### Problem Context
 
-First understand the complete problem statement, curriculum JSON, candidate profiles, and technical specification.
+The application needed to support the hackathon's core concept:
 
-Connect the project to:
+Build the interviewer, not the interview.
 
-https://github.com/CHACHA0044/interview-agent.git
+The AI Interview Agent needed to eventually assess candidates based on their learning journey through the 31-day AI Cohort.
 
-Build the frontend first.
+The frontend therefore needed concepts for:
 
-The frontend should represent an enterprise AI technical interview platform capable of:
+- candidates
+- curriculum
+- assessment topics
+- interview configuration
+- interview progress
+- evaluation
+- feedback
+- architecture
 
-- selecting candidates
-- understanding candidate progress
-- configuring an interview
-- conducting an adaptive technical interview
-- displaying interview progress
-- displaying evaluation and final feedback
-- communicating the overall architecture
+The supplied resources included:
 
-Use modern frontend technologies and keep the implementation modular.
+- `curriculum.json`
+- `candidates.json`
+- `technical-spec.md`
 
-Use:
+### Prompts Used
 
-- React
-- TypeScript
-- Vite
-- Tailwind CSS
-- Framer Motion / Motion
-- Lucide icons
-- shadcn/ui components
+**Initial frontend foundation prompt**
 
-Use a dark-themed enterprise interface.
+The AI coding agent was instructed to:
 
-Follow:
+- inspect the repository
+- understand the problem statement
+- inspect the provided JSON data
+- inspect the technical specification
+- connect the project to the existing GitHub repository
+- build the frontend first
+- use React and TypeScript
+- use Vite
+- use Tailwind CSS
+- use Motion/Framer Motion
+- use Lucide icons
+- use shadcn/ui
+- maintain a dark enterprise interface
+- keep the code modular
+- follow DRY principles
+- avoid unnecessary complexity
+- prepare the frontend for later backend integration
 
-- DRY principles
-- modular architecture
-- reusable components
-- clean separation of concerns
-- optimized rendering
-- best coding practices
-- clear naming
-- reusable UI components
-- minimal duplication
+A specific requirement was added for source-file documentation.
 
-Every TS/TSX/code file should contain a comment section at the top explaining:
+Every applicable `.ts`, `.tsx`, and other source file needed a header/comment section explaining:
 
 - what the file does
 - its objective
 - why it exists
-- how it connects to other files
-- the purpose of the page/component/service
+- what page/component/service it represents
+- how it connects to other parts of the project
 
-Keep these explanations throughout development.
+Configuration/data files such as JSON and environment files were excluded where comments were not appropriate.
 
-Do not over-engineer the application.
+### Frontend Structure
 
-Create a clear frontend structure that can later connect to the backend without requiring a major rewrite.
+The main frontend flow became:
 
-Also create/update a Markdown document containing the backend requirements so that backend development can follow the frontend and technical specification.
-
-Do not implement out-of-scope functionality.
-
-2. Frontend architecture and product-flow direction
-
-After establishing the base, the frontend was structured around the actual workflow of the Interview Agent.
-
-The intended product flow became:
-
+```text
 Overview
    ↓
 Candidates
    ↓
 Interview Setup
    ↓
-Interview Session
+Interview
    ↓
-Evaluation
-   ↓
-Final Feedback
+Evaluation / Feedback
+```
 
-Additional informational areas were included:
+Supporting sections included:
 
-Architecture
-Settings
-
-The goal was to make the interface feel like an enterprise assessment console, rather than a consumer-facing chatbot.
-
-The major frontend concepts became:
-
-Overview
-
-The landing/dashboard experience communicating:
-
-Enterprise AI assessment
-adaptive interviewing
-curriculum alignment
-candidate assessment
-evaluation pipeline
-system readiness
-Candidates
-
-A candidate roster showing information such as:
-
-candidate ID
-candidate name
-role
-experience
-cohort progress
-completed missions
-readiness
-
-Candidates could be selected for an interview.
-
-Interview Setup
-
-The configuration page allowed an interviewer to configure an assessment around:
-
-target candidate
-assessment topics
-question count
-session duration
-
-The UI included curriculum-related areas such as:
-
-Embeddings & Vector Search
-LLM Core / Prompting & Fine-Tuning
-Chatbot Application Build
-Agentic AI & MCP
-Evaluation, Security & Deployment
-Production & Capstone
-Architecture
-
-An architecture/product explanation page was created to explain the system at a high level.
-
-Settings
-
-A dedicated settings area was included for system/application configuration.
-
-3. Code-quality and file-documentation direction
-
-A recurring instruction throughout Phase 0 was that the codebase should remain understandable to the entire team.
-
-The coding agent was instructed to:
-
-avoid unnecessarily complex abstractions
-reuse components
-follow DRY
-keep components focused
-separate page-level and reusable UI components
-avoid duplicated logic
-keep configuration centralized
-make future backend integration straightforward
-
-The file documentation requirement was especially important.
-
-For applicable source files, the agent was instructed to keep a header explaining:
-
-Purpose:
-What this file is responsible for.
-
-Objective:
-What problem it solves.
-
-Connections:
-Which components/services/pages use it.
-
-Role:
-Why this file exists in the overall architecture.
-
-JSON, .env, and similar configuration/data files were excluded from the requirement where comments would not be appropriate.
-
-4. Initial visual direction
-
-The first frontend direction was a dark, modern AI interface.
-
-The initial implementation used a dark background with a strong accent color and modern dashboard cards.
-
-The frontend used:
-
-dark backgrounds
-large typography
-rounded cards
-icon-based feature blocks
-animated UI elements
-dashboard-style layouts
-responsive grids
-CTA buttons
-navigation tabs
-
-The initial design emphasized:
-
-AI-powered assessment
-Natural conversation
-Deep analytics
-Curriculum alignment
-Adaptive difficulty
-Instant feedback
-
-5. Frontend redesign and visual refinement
-
-After the initial implementation was reviewed, the visual design was considered too generic and the layout was not strong enough for a hackathon submission.
-
-A second design direction was therefore introduced.
-
-The instruction was to move away from the original purple-heavy appearance and create a more distinctive black + white + gold enterprise visual identity.
-
-Prompt summary:
-The existing frontend layout and visual hierarchy are poor.
-
-Do not rebuild the product concept.
-
-Improve the entire frontend site-wide.
-
-Use only:
-
-- black
-- white
-- gold
-
-as the primary visual language.
-
-Remove the previous purple-heavy visual identity.
-
-Create a premium enterprise AI assessment interface.
-
-Use the font files already included in the project folder.
-
-First scan the project folder and identify the available font files and assets.
-
-Use the provided font consistently throughout the application.
-
-Do not introduce another font unnecessarily.
-
-Improve:
-
-- typography hierarchy
-- spacing
-- page width
-- navigation
-- section hierarchy
-- cards
-- buttons
-- information density
-- alignment
-- visual rhythm
-- responsive behavior
-- empty space
-- content grouping
-
-The interface should look like a serious enterprise technical assessment platform.
-
-Avoid excessive gradients, excessive glow effects, oversized decorative elements, and unnecessary animation.
-
-Keep the design clean and intentional.
-6. Site-wide layout correction
-
-The first redesign still had layout problems, particularly on different viewport sizes.
-
-The subsequent direction focused on fixing the entire site layout, rather than tweaking individual components.
-
-The instruction emphasized that the application had to work across:
-
-desktop PCs
-laptops
-tablets
-mobile devices
-
-The layout needed to respond naturally rather than simply shrinking the desktop version.
-
-Prompt summary:
-Fix the frontend layout site-wide.
-
-Do not only adjust the homepage.
-
-Audit every page:
-
-- Overview
-- Candidates
-- Interview Setup
-- Interview
 - Architecture
 - Settings
-- any shared navigation/components
+- Visual Direction
 
-The layout must be genuinely responsive across:
+The first version used a dark AI-dashboard design.
+
+It included:
+
+- dark backgrounds
+- feature cards
+- animated elements
+- large typography
+- candidate cards
+- navigation
+- assessment controls
+- architecture information
+
+### Visual Redesign
+
+The initial purple-heavy interface was later considered too generic.
+
+A subsequent prompt instructed the AI agent to redesign the visual system around:
+
+- Black
+- White
+- Gold
+
+The agent was instructed to:
+
+- remove the purple visual identity
+- use the provided font files
+- scan the project for available fonts/assets
+- improve typography
+- improve spacing
+- improve hierarchy
+- reduce excessive decorative effects
+- make the application look like an enterprise assessment platform
+
+### Responsive Design
+
+The frontend was then repeatedly refined to work properly across:
 
 - desktop
 - laptop
 - tablet
 - mobile
 
-Do not rely on fixed widths or desktop-only positioning.
+The agent was explicitly instructed to avoid:
 
-Use responsive containers, grids, flex layouts, spacing and typography.
-
-Desktop should use the available screen width intelligently.
-
-Tablet layouts should transition from multi-column layouts to appropriate two-column or single-column layouts.
-
-Mobile should become a proper single-column application with usable navigation and controls.
-
-Prevent:
-
+- fixed desktop widths
 - horizontal overflow
-- clipped text
+- clipped content
 - overlapping cards
-- buttons going outside containers
 - oversized headings
-- fixed-width panels
-- content hidden below the viewport
 - navigation collisions
+- desktop-only layouts
 
-Keep the black / white / gold design system.
+The design needed to transition naturally between multi-column desktop layouts and single-column mobile layouts.
 
-Do not change the product functionality.
+### Phase 0 Outcome
 
-Do not add unnecessary features.
+The phase established the frontend product shell and visual identity.
 
-Focus specifically on layout quality, responsive behavior, spacing, hierarchy and usability.
-7. Responsive design refinement
+The result was:
 
-The responsive requirement was subsequently made even more explicit because screenshots showed that the desktop layout was being treated as the primary design and smaller screens were not being handled properly.
+```text
+Problem Statement
+       ↓
+UX Definition
+       ↓
+React/TypeScript Foundation
+       ↓
+Candidate Flow
+       ↓
+Interview Configuration
+       ↓
+Enterprise UI
+       ↓
+Black/White/Gold Design
+       ↓
+Responsive Layout
+```
 
-The frontend was instructed to use mobile/tablet/desktop as first-class layouts, rather than treating mobile as an afterthought.
+The frontend was intentionally designed so that backend intelligence could later be connected without rewriting the entire UI.
 
-The expected behavior became:
+## Phase 1 — Backend Audit & Deployment Preparation
 
-Desktop
-full navigation
-multi-column candidate cards
-wide assessment layouts
-dashboard information panels
-architecture visualizations
-Tablet
-reduced columns
-compact navigation
-appropriately sized cards
-reorganized dashboard sections
-Mobile
-single-column content
-stacked cards
-simplified navigation
-full-width buttons
-readable typography
-no horizontal scrolling
-interview interface optimized for narrow screens
-8. Backend-awareness during frontend development
+### Goal
 
-Although the backend was not implemented during this phase, the frontend was designed with the eventual backend contract in mind.
+Analyze the backend requirements and establish a clean architecture capable of supporting the Interview Agent.
 
-The UI was structured around the expected concepts:
+The backend needed to support:
 
-Candidate
-Session
-Question
-Answer
-Evaluation
-Feedback
+- multi-turn interviews
+- candidate context
+- curriculum context
+- adaptive questions
+- follow-ups
+- evaluation
+- feedback
+- session state
+- required API contracts
 
-This was important because the later backend architecture would introduce:
+It also needed to be practical to deploy during the hackathon.
 
+### Initial Backend Architecture
+
+The architecture was separated into:
+
+```text
 Frontend
    ↓
 Gateway
@@ -393,162 +233,883 @@ Gateway
 Interview Agent
    ↓
 AI Intelligence
+```
 
-The frontend was therefore not supposed to contain the actual interview intelligence.
+Supporting infrastructure included:
 
-The frontend's responsibility was primarily:
+- Redis
+- Qdrant
+- LLM
 
-collecting candidate/session information
-presenting interview questions
-collecting answers
-displaying progress
-displaying evaluation/feedback
-communicating with backend APIs
-9. Repository integration
+### Prompt Used
 
-The project was connected to the team's repository:
+**Backend architecture prompt**
 
-https://github.com/CHACHA0044/interview-agent.git
+The AI agent was instructed to analyze:
 
-The frontend was developed inside the repository rather than creating a separate unrelated application.
+- problem statement
+- `backend.md`
+- `backend-requirements.md`
+- `technical-spec.md`
+- `candidates.json`
+- `curriculum.json`
+- existing frontend
 
-The project structure eventually included:
+It was asked to:
 
-interview-agent/
-│
-├── backend/
-│
-├── frontend/
-│   ├── src/
-│   ├── public/
-│   ├── docs/
-│   ├── package.json
-│   ├── vite.config.ts
-│   ├── tailwind.config.ts
-│   └── ...
-│
-├── candidates.json
-├── curriculum.json
-├── technical-spec.md
-├── backend.md
-├── backend-requirements.md
-└── README.md
+- identify backend responsibilities
+- divide the backend into services
+- define service boundaries
+- create shared contracts
+- avoid duplicated logic
+- follow DRY principles
+- keep the architecture modular
+- make services independently testable
+- avoid unnecessary complexity
 
-This allowed the frontend, provided hackathon resources, backend documentation, and later backend implementation to remain within one repository.
+### Service Responsibilities
 
-**What was implemented:** Frontend foundation
+#### Gateway
 
-A React + TypeScript + Vite frontend was established with a reusable component structure.
+Responsible for:
 
-Core navigation
+- public API
+- session lifecycle
+- request validation
+- response validation
+- CORS
+- error mapping
+- communication with internal services
 
-The frontend developed a navigation system around:
+#### Interview Agent
 
-Overview/Home
-Candidates
-Interview Setup
-Architecture
-Settings
-Candidate interface
+Responsible for:
 
-A candidate roster was created using candidate-oriented cards displaying information such as:
+- interview state
+- question progression
+- difficulty
+- follow-up decisions
+- curriculum coverage
+- completion rules
 
-candidate ID
-candidate name
-role
-experience
-cohort progress
-missions completed
-interview readiness
-Interview configuration
+#### AI Intelligence
 
-An Interview Setup interface was created where a candidate could be selected and assessment topics configured before launching an interview.
+Responsible for:
 
-Enterprise assessment visual identity
+- question generation
+- follow-up generation
+- answer evaluation
+- feedback generation
+- curriculum retrieval
+- LLM integration
 
-The design evolved from the initial dark/purple AI-dashboard concept into a more distinctive:
+### Shared Contracts
 
-Black + White + Gold
+A shared contract layer was created:
 
-visual system.
+```text
+backend/shared/schemas/
+├── session.json
+├── agent_api.json
+└── ai_api.json
+```
 
-Responsive frontend
+JSON Schema Draft 2020-12 was used.
 
-The frontend was progressively refined for:
+This prevented the Gateway, Interview Agent, and AI Intelligence services from independently defining incompatible payloads.
 
-PC
-laptop
-tablet
-mobile
-Animation and interaction
+### Gateway
 
-Motion-based transitions and Lucide/shadcn-style components were used to make the interface feel polished while keeping the application functional.
+The Gateway implemented the public API and session lifecycle.
 
-Architecture presentation
+Important responsibilities included:
 
-An Architecture section was added so the hackathon judges could understand the intended multi-agent assessment pipeline.
+- starting interviews
+- processing turns
+- completing sessions
+- storing session state
+- communicating with the Interview Agent
+- mapping internal errors to public HTTP responses
 
-Backend preparation
+The Gateway was deliberately kept unaware of interview strategy.
 
-The frontend phase also established the initial backend requirements/documentation so backend implementation could proceed independently.
+### Contract Testing
 
-Phase 0 Outcome
+Shared contract tests were introduced to verify:
 
-Status: Frontend foundation completed and progressively refined.
+- API schemas
+- session compatibility
+- Agent API compatibility
+- AI API compatibility
+- Gateway compatibility
 
-The phase established the product's visual language, navigation, candidate workflow, interview configuration flow, architecture presentation, and responsive UI foundation.
+### Docker Architecture
 
-The frontend was intentionally kept separate from the interview intelligence so that the later backend could implement the actual adaptive interview engine without coupling business logic into React components.
+A Docker Compose setup was created around:
 
-The major progression of Phase 0 was:
+- gateway
+- interview-agent
+- ai-intelligence
+- redis
+- qdrant
 
-Problem Statement
-       ↓
-Product / UX Definition
-       ↓
-React + TypeScript Foundation
-       ↓
-Candidate & Interview Flow
-       ↓
-Enterprise Assessment UI
-       ↓
-Black / White / Gold Redesign
-       ↓
-Site-wide Layout Improvements
-       ↓
-Responsive PC / Tablet / Mobile Design
-       ↓
-Backend-ready Frontend Foundation
+Only the Gateway was externally exposed.
 
-Phase 0 ended with the frontend serving as the product shell for the backend work that followed.
+### Render Deployment Decision
 
-## Phase 1 — Backend Audit & Deployment Prep
-**Goal:** Prepare existing backend for single-service Render deployment
-**Prompts used:** [paste or summarize key prompts]
-**What was implemented:** Dockerfile, start.sh, single-container service orchestration, env config
+Because running three independent backend services on Render's free tier was not practical, the deployment architecture was later changed to a single Docker container.
+
+The container would run:
+
+```text
+Gateway             :8000
+Interview Agent     :8001
+AI Intelligence     :8002
+```
+
+Only port 8000 would be externally accessible.
+
+### Deployment Files
+
+The deployment preparation introduced:
+
+- `backend/Dockerfile`
+- `backend/start.sh`
+- `backend/.dockerignore`
+- `backend/.env.example`
+- `render.yaml`
+
+`start.sh` was responsible for:
+
+- starting AI Intelligence
+- starting Interview Agent
+- waiting for health checks
+- starting Gateway in the foreground
+
+### Phase 1 Outcome
+
+The backend moved from a conceptual design to a contract-driven architecture.
+
+The resulting architecture was:
+
+```text
+                Frontend
+                   │
+                   ▼
+               Gateway
+                   │
+          ┌────────┴────────┐
+          ▼                 ▼
+ Interview Agent     AI Intelligence
+                           │
+                    ┌──────┴──────┐
+                    ▼             ▼
+                 Qdrant          LLM
+```
+
+The architecture was also prepared for single-service Render deployment.
 
 ## Phase 2 — Backend Verification & Bug Fixes
-**Goal:** Verify 168-test backend actually meets hackathon floor requirements (8Q/4-day)
-**Key finding:** curriculum.json day-range parsing bug (interior days dropped)
-**Prompts used:** [paste]
-**Fix applied:** commit 63cc7fd — expanded [start,end] ranges correctly
+
+### Goal
+
+Verify that the implemented backend actually satisfied the hackathon's mandatory interview requirements rather than only passing generic API tests.
+
+The key requirements being verified were:
+
+- minimum 8 questions
+- minimum 4 curriculum days
+- adaptive follow-up questions
+- conversation context
+- structured feedback
+- Agent-owned completion
+
+### Initial Verification
+
+The backend had reached approximately 168 tests across:
+
+- Gateway
+- Interview Agent
+- AI Intelligence
+- Shared contracts
+
+The verification process involved auditing:
+
+- implementation
+- schemas
+- fixtures
+- tests
+- curriculum parsing
+- completion logic
+
+### Prompt Used
+
+**Backend verification prompt**
+
+The AI agent was instructed to:
+
+- audit the entire backend against the problem statement
+- inspect `technical-spec.md`
+- inspect `backend.md`
+- inspect all shared contracts
+- inspect Agent implementation
+- inspect AI implementation
+- inspect test coverage
+- specifically verify the 8-question / 4-day requirement
+- identify places where completion could happen prematurely
+- verify that the Gateway does not incorrectly enforce interview strategy
+- verify curriculum-day calculation
+- add tests for uncovered requirements
+- fix actual bugs rather than only changing tests
+
+### Important Finding
+
+A curriculum day-range parsing issue was discovered.
+
+Some curriculum entries represented ranges such as:
+
+```text
+[1, 5]
+```
+
+The implementation incorrectly handled the range and could omit interior days.
+
+This could cause the system to believe that fewer curriculum days had been covered than were actually present.
+
+### Fix
+
+The curriculum range parsing was corrected so that ranges were expanded correctly.
+
+For example:
+
+```text
+[1, 5]
+```
+
+was interpreted as:
+
+```text
+1
+2
+3
+4
+5
+```
+
+rather than only treating the boundary values as available.
+
+The fix was recorded as:
+
+`commit 63cc7fd`
+
+### Completion Ownership
+
+The audit also reinforced an important architecture rule:
+
+The Interview Agent owns interview completion.
+
+The Gateway should not decide when an interview has reached the required question count or curriculum coverage.
+
+The Agent must ensure:
+
+```text
+questionCount >= 8
+AND
+distinctCurriculumDays >= 4
+```
+
+before returning:
+
+```text
+done = true
+```
+
+### Contract Tests
+
+Additional tests were introduced to verify that:
+
+- 8+ questions are representable
+- 4+ curriculum days are representable
+- schemas do not hard-code a maximum below the requirement
+- the Agent cannot complete early
+- follow-ups can reference previous answers
+- completion requires valid feedback
+- Agent completion remains the source of truth
+
+### Phase 2 Outcome
+
+The backend was no longer merely "passing tests."
+
+It was explicitly tested against the actual hackathon acceptance criteria.
+
+The phase established confidence that the backend architecture could represent the required interview length and curriculum coverage.
 
 ## Phase 3 — Frontend Data Wiring
-**Goal:** Replace mock candidate/interview data with real backend calls
-**Key finding:** Frontend was 100% mock — zero real HTTP calls
-**Prompts used:** [paste]
-**Fix applied:** real interview.service.ts, Settings functional wiring
+
+### Goal
+
+Replace the frontend's mock/canned data with real communication with the backend.
+
+This phase addressed a major issue discovered during the audit:
+
+The frontend was still effectively a mock application.
+
+The UI could display candidates and interview flows, but the real backend services were not yet driving the experience.
+
+### Prompt Used
+
+**Frontend integration prompt**
+
+The AI agent was instructed to:
+
+- audit all frontend data sources
+- identify mock candidate data
+- identify mock interview responses
+- identify fake service handlers
+- identify hard-coded evaluation data
+- inspect backend API contracts
+- create a proper frontend service layer
+- connect the UI to the Gateway
+- preserve the existing UI
+- avoid moving backend logic into React
+- use typed API responses
+- handle loading/error states
+- keep API logic separate from components
+
+### Interview Service
+
+A real `interview.service.ts` was introduced.
+
+The service became responsible for communicating with the backend rather than individual React components making ad-hoc requests.
+
+This preserved separation between:
+
+```text
+UI
+ ↓
+Service
+ ↓
+API
+```
+
+### Candidate Data
+
+Candidate selection was updated to use the actual candidate dataset/backend flow instead of relying entirely on static mock objects.
+
+Candidate context could now be used as the basis for the interview.
+
+### Interview Flow
+
+The frontend was wired around the backend session lifecycle:
+
+```text
+Start
+ ↓
+Receive Question
+ ↓
+Submit Answer
+ ↓
+Receive Next Question / Follow-up
+ ↓
+Continue
+ ↓
+Complete
+ ↓
+Display Feedback
+```
+
+### Settings
+
+Settings were also connected to the application's actual configuration rather than remaining purely visual controls.
+
+### Important Architecture Principle
+
+The frontend was not allowed to implement interview intelligence.
+
+It only:
+
+- sends user input
+- displays Agent responses
+- displays state
+- displays evaluation
+- handles UI state
+
+The backend remains responsible for:
+
+- question selection
+- follow-up logic
+- evaluation
+- curriculum reasoning
+- completion
+
+### Phase 3 Outcome
+
+The frontend transitioned from:
+
+```text
+UI + Mock Data
+```
+
+to:
+
+```text
+UI
+ ↓
+Frontend Service Layer
+ ↓
+Gateway
+ ↓
+Real Backend
+```
+
+This was a major step toward a genuine end-to-end application.
 
 ## Phase 4 — Agent Quality & Multi-Provider Resilience
-**Goal:** Fix generic/stuck questions, add Groq multi-key rotation + Cerebras failover
-**Prompts used:** [paste]
-**Fix applied:** provider rotation chain, structured logging, keepalive
+
+### Goal
+
+Improve the quality and reliability of the AI interview system after the initial end-to-end implementation.
+
+The first real interview behavior revealed that technically valid responses could still produce poor interview experiences.
+
+The focus became:
+
+- better question generation
+- avoiding repetitive/generic questions
+- better follow-ups
+- provider resilience
+- structured logging
+- handling API failures
+- avoiding interview interruption when an AI provider fails
+
+### Prompt Used
+
+**AI quality and resilience prompt**
+
+The AI agent was instructed to:
+
+- inspect the existing Interview Agent and AI Intelligence implementations
+- analyze question-generation behavior
+- identify generic or repetitive questions
+- ensure questions are grounded in candidate context
+- use curriculum context when generating questions
+- make follow-ups reference the previous answer
+- maintain interview state across turns
+- preserve the 8-question / 4-day requirement
+- implement resilient provider handling
+- avoid making the entire interview dependent on one external model provider
+- add structured logs
+- maintain deterministic fallbacks
+
+### Provider Rotation
+
+A provider rotation/failover mechanism was introduced.
+
+The intended flow became conceptually:
+
+```text
+Primary Provider
+      ↓
+Failure?
+      ↓
+Next Provider
+      ↓
+Failure?
+      ↓
+Fallback
+```
+
+The system was prepared to support multiple AI providers rather than depending on a single API.
+
+### Groq Multi-Key Rotation
+
+Multiple Groq API keys could be rotated to reduce the impact of individual quota/rate-limit failures.
+
+The provider layer became responsible for selecting another available key when appropriate.
+
+### Cerebras Failover
+
+Cerebras was introduced as an additional fallback provider.
+
+The goal was not to change the interview architecture but to make the AI layer more resilient.
+
+### Deterministic Fallback
+
+The system retained the fake/heuristic path.
+
+This was important because:
+
+```text
+AI provider failure
+        ≠
+Interview failure
+```
+
+The interview system should still be able to produce a deterministic response when an external model is unavailable.
+
+### Structured Logging
+
+Logging was improved so that provider failures and fallback decisions could be diagnosed more easily.
+
+This was particularly useful for live testing.
+
+### Keepalive / Reliability
+
+Additional reliability handling was introduced to reduce unnecessary provider/service failures during longer interview sessions.
+
+### Phase 4 Outcome
+
+The AI layer evolved from a single-provider implementation into a more resilient architecture:
+
+```text
+                AI Request
+                    │
+                    ▼
+              Provider Layer
+                    │
+          ┌─────────┼─────────┐
+          ▼         ▼         ▼
+        Groq     Cerebras   Fallback
+          │         │         │
+          └─────────┴─────────┘
+                    │
+                    ▼
+             Deterministic
+               Response
+```
+
+This improved the reliability of the interview experience without changing the core service architecture.
 
 ## Phase 5 — Live Testing & Bug Discovery
-**Goal:** Real end-to-end interviews against real APIs, no mocks
-**Findings:** Cerebras model 404, fake-fallback schema validation failures
-**Prompts used:** [paste]
+
+### Goal
+
+Move beyond unit tests and test the application using real end-to-end interviews and real AI APIs.
+
+The purpose of this phase was to discover problems that unit tests could not reveal.
+
+### Testing Approach
+
+The system was tested as a real user would interact with it:
+
+```text
+Browser
+  ↓
+Vercel Frontend
+  ↓
+Render Backend
+  ↓
+Gateway
+  ↓
+Interview Agent
+  ↓
+AI Intelligence
+  ↓
+External AI Provider
+```
+
+The focus was specifically on real API behavior, not mocked responses.
+
+### Prompt Used
+
+**Live testing prompt**
+
+The AI agent was instructed to:
+
+- run real interview sessions
+- use real backend services
+- avoid relying on mocks
+- test candidate selection
+- start an interview
+- submit multiple answers
+- test follow-ups
+- test question progression
+- test completion
+- verify feedback
+- inspect backend logs
+- identify failures that unit tests did not catch
+- fix actual integration problems
+- retest after each fix
+
+### Issue 1 — Cerebras Model 404
+
+A real API request exposed a model configuration problem.
+
+The configured Cerebras model returned:
+
+```text
+404
+```
+
+This demonstrated why unit tests alone were insufficient.
+
+The provider configuration had to be verified against the actual provider/API behavior.
+
+### Issue 2 — Fake Fallback Schema Validation
+
+Another issue appeared when the AI system fell back to the fake provider.
+
+The fallback response did not always satisfy the exact schema expected by the downstream service.
+
+This resulted in schema validation problems.
+
+The fallback needed to produce exactly the same structural contract as the real provider path.
+
+### Important Finding
+
+The phase demonstrated that:
+
+```text
+Unit tests passing
+
+does not necessarily mean:
+
+Real system working
+```
+
+The integration layer between:
+
+- frontend
+- Render
+- Gateway
+- Agent
+- AI service
+- external providers
+
+had to be tested separately.
+
+### Phase 5 Outcome
+
+The system was tested as a genuine end-to-end application.
+
+This phase identified provider configuration and fallback-contract problems that were not obvious from isolated service tests.
+
+Those issues became inputs for the subsequent fixes and final validation.
 
 ## Phase 6 — Frontend Polish
-**Goal:** Cross-device responsiveness, animations, UX fixes
-**Prompts used:** [paste]
+
+### Goal
+
+Perform the final frontend refinement required to make the project presentable for hackathon judging and usable across different devices.
+
+The focus was not on adding large new features.
+
+Instead, it was on:
+
+- visual consistency
+- responsiveness
+- spacing
+- navigation
+- animations
+- readability
+- interview UX
+- mobile/tablet behavior
+- final interaction quality
+
+### Prompt Used
+
+**Final frontend polish prompt**
+
+The AI agent was instructed to:
+
+- audit the entire frontend
+- test every major route
+- preserve the black/white/gold design
+- improve responsive behavior
+- test desktop
+- test tablet
+- test mobile
+- fix layout overflow
+- fix navigation issues
+- improve spacing
+- improve typography
+- improve button sizing
+- improve cards
+- improve interview interaction
+- keep animations purposeful
+- avoid excessive visual effects
+- avoid changing backend behavior
+- avoid adding unnecessary features
+- maintain the existing architecture
+- preserve reusable components
+- follow DRY principles
+
+### Responsive Testing
+
+The final frontend was explicitly treated as a cross-platform interface.
+
+#### Desktop
+
+The interface should use the full available width without creating oversized empty regions.
+
+#### Tablet
+
+Cards and navigation should transition naturally into smaller layouts.
+
+#### Mobile
+
+The interface should:
+
+- stack content
+- provide accessible controls
+- prevent horizontal scrolling
+- keep buttons usable
+- maintain readable typography
+- preserve the interview flow
+
+### Visual System
+
+The final visual identity remained:
+
+- Black
+- White
+- Gold
+
+The interface was kept intentionally restrained rather than returning to the earlier purple-heavy AI aesthetic.
+
+### Interview Experience
+
+The final polish also focused on making the actual interview screen feel like the core product rather than another dashboard page.
+
+The expected flow became:
+
+```text
+Candidate Context
+       ↓
+Current Question
+       ↓
+Candidate Answer
+       ↓
+AI Evaluation
+       ↓
+Next Question / Follow-up
+       ↓
+Progress
+       ↓
+Final Assessment
+```
+
+### Phase 6 Outcome
+
+The frontend was refined from a functional dashboard into the final presentation layer of the Interview Agent.
+
+The overall product became:
+
+```text
+                INTERVIEW AGENT
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+     Candidate                Curriculum
+     Context                    Context
+          │                       │
+          └───────────┬───────────┘
+                      ▼
+              Interview Agent
+                      │
+                      ▼
+             Adaptive Questions
+                      │
+                      ▼
+              Candidate Answers
+                      │
+                      ▼
+                Evaluation
+                      │
+                      ▼
+              Structured Feedback
+```
+
+The frontend polish phase focused on ensuring that this flow was understandable and usable to a judge or evaluator immediately after opening the live demo.
+
+## Overall Development Timeline
+
+The complete development progression can be represented as:
+
+```text
+PHASE 0
+Frontend Foundation
+        │
+        ▼
+PHASE 1
+Backend Architecture
+        │
+        ▼
+PHASE 2
+Backend Verification
+        │
+        ▼
+PHASE 3
+Frontend ↔ Backend Integration
+        │
+        ▼
+PHASE 4
+AI Quality + Provider Resilience
+        │
+        ▼
+PHASE 5
+Real End-to-End Testing
+        │
+        ▼
+PHASE 6
+Frontend Polish
+```
+
+## Final Project Architecture
+
+By the end of these phases, the intended system architecture was:
+
+```text
+                         ┌──────────────────────┐
+                         │      Vercel          │
+                         │      Frontend        │
+                         └──────────┬───────────┘
+                                    │
+                                    │ HTTPS
+                                    ▼
+                    ┌──────────────────────────────┐
+                    │      Render Backend          │
+                    │                              │
+                    │  ┌────────────────────────┐  │
+                    │  │       Gateway          │  │
+                    │  │        :8000           │  │
+                    │  └───────────┬────────────┘  │
+                    │              │               │
+                    │       ┌──────┴───────┐       │
+                    │       ▼              ▼       │
+                    │ ┌───────────┐ ┌────────────┐ │
+                    │ │ Interview │ │     AI     │ │
+                    │ │   Agent   │ │Intelligence │ │
+                    │ │   :8001   │ │   :8002    │ │
+                    │ └───────────┘ └─────┬──────┘ │
+                    │                     │        │
+                    │              ┌──────┴─────┐  │
+                    │              ▼            ▼  │
+                    │           Qdrant         LLM │
+                    │                              │
+                    └──────────────────────────────┘
+```
+
+The core responsibility separation remained:
+
+| Component | Responsibility |
+| --- | --- |
+| Frontend | User experience and presentation |
+| Gateway | Public API and session lifecycle |
+| Interview Agent | Interview reasoning, state and progression |
+| AI Intelligence | RAG, LLM, evaluation and feedback |
+| Qdrant | Curriculum retrieval |
+| LLM Providers | Question/follow-up/evaluation intelligence |
+| Shared Contracts | Service compatibility |
+
+## Phase Summary
+
+| Phase | Main Objective | Result |
+| --- | --- | --- |
+| 0 | Frontend foundation | Initial enterprise UI and product flow |
+| 1 | Backend architecture & deployment | Gateway + Agent + AI architecture and Render preparation |
+| 2 | Backend verification | Hackathon floors and curriculum coverage verified/fixed |
+| 3 | Frontend data wiring | Mock frontend connected to real backend |
+| 4 | AI quality/resilience | Provider rotation, fallback and improved interview behavior |
+| 5 | Live testing | Real API/integration issues discovered and addressed |
+| 6 | Frontend polish | Responsive, cross-platform and presentation-ready UI |

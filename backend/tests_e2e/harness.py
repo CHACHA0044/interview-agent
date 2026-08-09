@@ -110,13 +110,29 @@ def kill_stale_ports() -> None:
 
 
 class Stack:
-    """Manages the four subprocesses of the live stack."""
+    """Manages the four subprocesses of the live stack.
 
-    def __init__(self, workdir: pathlib.Path) -> None:
+    ``log_level`` selects the uvicorn log level for the two Python services
+    (``warning`` keeps the shared e2e suite quiet; ``info`` exposes the
+    structured ``[AI]``/``[AGENT]`` log lines used by the live-provider tests).
+    ``ai_env`` merges extra environment variables into the ai-intelligence
+    service (e.g. real Groq/Cerebras keys for live runs).
+    """
+
+    def __init__(
+        self,
+        workdir: pathlib.Path,
+        log_level: str = "warning",
+        ai_env: dict | None = None,
+        gateway_timeout: int = 30,
+    ) -> None:
         self.workdir = pathlib.Path(workdir)
         self.workdir.mkdir(parents=True, exist_ok=True)
         self.log_path = self.workdir / "proxy.jsonl"
         self.procs: list[subprocess.Popen] = []
+        self.log_level = log_level
+        self.ai_env = dict(ai_env or {})
+        self.gateway_timeout = gateway_timeout
 
     # ------------------------------------------------------------ lifecycle
 
@@ -125,19 +141,19 @@ class Stack:
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
 
-        self._spawn_service(
-            "ai-intelligence",
-            AI_PORT,
-            env,
-            {"LLM_PROVIDER": "fake", "CURRICULUM_PATH": str(CURRICULUM_PATH),
-             "QDRANT_URL": "http://127.0.0.1:6398"},
-        )
+        ai_overrides = {"LLM_PROVIDER": "fake", "CURRICULUM_PATH": str(CURRICULUM_PATH),
+                        "QDRANT_URL": "http://127.0.0.1:6398",
+                        "LOG_LEVEL": self.log_level.upper()}
+        ai_overrides.update(self.ai_env)
+        self._spawn_service("ai-intelligence", AI_PORT, env, ai_overrides)
         self._spawn_service(
             "interview-agent",
             AGENT_PORT,
             env,
             {"AI_SERVICE_URL": f"http://127.0.0.1:{AI_PORT}",
-             "CURRICULUM_PATH": str(CURRICULUM_PATH)},
+             "CURRICULUM_PATH": str(CURRICULUM_PATH),
+             "AI_TIMEOUT_SECONDS": str(max(self.gateway_timeout, 60)),
+             "LOG_LEVEL": self.log_level.upper()},
         )
         proxy = subprocess.Popen(
             [
@@ -164,14 +180,13 @@ class Stack:
                 "AI_SERVICE_URL": f"http://127.0.0.1:{AI_PORT}",
                 "REDIS_URL": "redis://127.0.0.1:6399/0",
                 "CONNECT_TIMEOUT_SECONDS": "1",
-                "REQUEST_TIMEOUT_SECONDS": "30",
+                "REQUEST_TIMEOUT_SECONDS": str(self.gateway_timeout),
                 "RETRIES": "0",
                 "INTERNAL_API_TOKEN": "",
                 "FRONTEND_ORIGINS": "http://localhost:5173",
                 "LOG_LEVEL": "WARNING",
             },
         )
-
         self._wait_ready(
             "ai-intelligence", AI_PORT,
             expect=lambda st, body: st == 200 and (body or {}).get("status") == "ok",
@@ -218,7 +233,7 @@ class Stack:
                 "app.main:app",
                 "--host", "127.0.0.1",
                 "--port", str(port),
-                "--log-level", "warning",
+                "--log-level", self.log_level,
             ],
             cwd=str(cwd),
             env=service_env,
@@ -333,7 +348,7 @@ def run_interview(
     }
     after_seq = 0
 
-    with httpx.Client(base_url=GATEWAY_URL, timeout=60) as client:
+    with httpx.Client(base_url=GATEWAY_URL, timeout=300) as client:
         start = client.post(
             "/api/interview", json={"sessionId": session_id, "candidate": candidate}
         )

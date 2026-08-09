@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Activity,
   WifiOff,
+  ShieldAlert,
 } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
@@ -194,6 +195,7 @@ export function LandingPage() {
 
   const isOnline = status === "online";
   const isOffline = status === "offline";
+  const isUnknown = status === "unknown";
   const isChecking = status === "checking";
   const isDegraded = status === "degraded";
 
@@ -254,7 +256,7 @@ export function LandingPage() {
                     <motion.span
                       className={cn(
                         "h-2.5 w-2.5 rounded-full",
-                        isOnline ? "bg-[#22C55E]" : isDegraded ? "bg-[#F59E0B]" : isOffline ? "bg-[#EF4444]" : "bg-[#D4AF37]"
+                        isOnline ? "bg-[#22C55E]" : isDegraded ? "bg-[#F59E0B]" : isOffline ? "bg-[#EF4444]" : isUnknown ? "bg-[#F59E0B]" : "bg-[#D4AF37]"
                       )}
                       animate={isChecking ? { opacity: [1, 0.4, 1] } : undefined}
                       transition={{ duration: 1.2, repeat: Infinity }}
@@ -263,10 +265,10 @@ export function LandingPage() {
                   </span>
                   <span
                     className={cn(
-                      isOnline ? "text-[#22C55E]" : isDegraded ? "text-[#F59E0B]" : isOffline ? "text-[#EF4444]" : "text-[#D4AF37]"
+                      isOnline ? "text-[#22C55E]" : isDegraded ? "text-[#F59E0B]" : isOffline ? "text-[#EF4444]" : isUnknown ? "text-[#F59E0B]" : "text-[#D4AF37]"
                     )}
                   >
-                    {isOnline ? "ONLINE" : isDegraded ? "DEGRADED" : isOffline ? "OFFLINE" : "CONNECTING"}
+                    {isOnline ? "ONLINE" : isDegraded ? "DEGRADED" : isOffline ? "OFFLINE" : isUnknown ? "UNKNOWN" : "CONNECTING"}
                   </span>
                 </div>
 
@@ -299,9 +301,9 @@ export function LandingPage() {
                     <div className="flex items-center gap-3">
                       <span className={cn(
                         "h-9 w-9 rounded-lg flex items-center justify-center",
-                        isOnline ? "bg-[#22C55E]/10 text-[#22C55E]" : isDegraded ? "bg-[#F59E0B]/10 text-[#F59E0B]" : isOffline ? "bg-[#EF4444]/10 text-[#EF4444]" : "bg-[#1D1D1D] text-[#D4AF37]"
+                        isOnline ? "bg-[#22C55E]/10 text-[#22C55E]" : isDegraded ? "bg-[#F59E0B]/10 text-[#F59E0B]" : isOffline ? "bg-[#EF4444]/10 text-[#EF4444]" : isUnknown ? "bg-[#F59E0B]/10 text-[#F59E0B]" : "bg-[#1D1D1D] text-[#D4AF37]"
                       )}>
-                        {isOnline ? <Activity className="h-4 w-4" /> : isDegraded ? <Activity className="h-4 w-4" /> : isOffline ? <WifiOff className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                        {isOnline ? <Activity className="h-4 w-4" /> : isDegraded ? <Activity className="h-4 w-4" /> : isOffline ? <WifiOff className="h-4 w-4" /> : isUnknown ? <ShieldAlert className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
                       </span>
                       <div>
                         <span className="text-xs font-semibold text-white block">Evaluation Mode</span>
@@ -312,15 +314,17 @@ export function LandingPage() {
                               ? "Gateway Degraded · In-Memory Store"
                               : isOffline
                                 ? "Gateway Unreachable"
-                                : "Checking Gateway Health"}
+                                : isUnknown
+                                  ? "Status Unknown · Probe Blocked"
+                                  : "Checking Gateway Health"}
                         </span>
                       </div>
                     </div>
                     <Badge
-                      variant={isOnline ? "success" : isDegraded ? "warning" : isOffline ? "danger" : "gold"}
+                      variant={isOnline ? "success" : isOffline ? "danger" : isUnknown || isDegraded ? "warning" : "gold"}
                       className="text-[10px]"
                     >
-                      {isOnline ? "Online" : isDegraded ? "Degraded" : isOffline ? "Offline" : "Checking"}
+                      {isOnline ? "Online" : isDegraded ? "Degraded" : isOffline ? "Offline" : isUnknown ? "Unknown" : "Checking"}
                     </Badge>
                   </div>
                 </Stack>

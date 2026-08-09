@@ -18,6 +18,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.endpoints import router as internal_ai_router
 from app.api.dependencies import get_provider_status
 import logging
+import os
+
+# Honor LOG_LEVEL env (INFO for live failover/RAG evidence runs; WARNING default
+# keeps normal operation quiet). Root level is WARNING by default, which would
+# otherwise suppress the structured [AI] INFO lines used by tests_e2e/live_interview.py.
+# basicConfig adds a handler to the root logger when none exists (uvicorn only
+# configures its own loggers), so INFO lines actually get emitted; setLevel alone
+# is silently dropped by the lastResort handler when root has no handler.
+_log_level = os.getenv("LOG_LEVEL", "WARNING").upper()
+logging.basicConfig(level=_log_level, format="%(levelname)s: %(message)s")
+logging.getLogger().setLevel(_log_level)
 
 
 class _StatusPollAccessFilter(logging.Filter):

@@ -30,7 +30,8 @@ You must respond with a strict JSON object that contains the following fields:
 - "type" (string): Usually "technical" unless otherwise specified.
 - "difficulty" (string): Match the difficulty from the strategy.
 - "topic" (string): Match the topic from the strategy.
+- "day" (integer): Match the "day" value from the strategy. ALWAYS include this field.
 - "expectedConcepts" (array of strings): A list of key terms/concepts you expect the candidate to mention in a successful answer.
 
-Ensure your JSON is perfectly formatted.
+Ensure your JSON is perfectly formatted and includes EVERY field listed above, including "day".
 """
