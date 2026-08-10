@@ -45,6 +45,7 @@ export interface CustomSelectOption {
   value: string;
   label: string;
   sublabel?: string;
+  icon?: ReactNode;
 }
 
 export interface CustomSelectProps {
@@ -130,7 +131,7 @@ export function CustomSelect({
         className="touch-target w-full px-4 rounded-xl bg-[#141414] border border-[#222222] text-xs text-white focus:outline-none focus:border-[#D4AF37] focus:ring-1 focus:ring-[#D4AF37]/40 transition-colors flex items-center justify-between gap-2"
       >
         <span className="flex items-center gap-2.5 min-w-0 text-left">
-          {triggerIcon}
+          {selected?.icon ?? triggerIcon}
           <span className="min-w-0">
             {selected ? (
               <>
@@ -184,7 +185,7 @@ export function CustomSelect({
                     )}
                   >
                     <span className="flex items-center gap-2.5 min-w-0">
-                      {optionIcon}
+                      {opt.icon ?? optionIcon}
                       <span className="min-w-0">
                         <span className="block text-xs text-white truncate">{opt.label}</span>
                         {opt.sublabel ? (

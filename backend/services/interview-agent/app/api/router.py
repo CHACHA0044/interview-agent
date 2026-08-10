@@ -53,7 +53,22 @@ async def start_interview(payload: AgentStartRequest, request: Request):
             orchestrator.min_curriculum_days = _clamp("minCurriculumDays", orchestrator.min_curriculum_days)
             orchestrator.followup_budget = _clamp("followupBudget", orchestrator.followup_budget)
             orchestrator.followup_max_per_question = _clamp("followupMaxPerQuestion", orchestrator.followup_max_per_question)
-        return await orchestrator.start(payload.sessionId, payload.candidate)
+
+        # Optional curriculum scope: restrict the assessment plan to the modules
+        # the user selected on the Interview Setup page.
+        focus_topics = config.get("focusTopics") if config else None
+        if focus_topics is not None:
+            if not isinstance(focus_topics, list) or not all(isinstance(t, str) for t in focus_topics):
+                raise HTTPException(
+                    status_code=400,
+                    detail="focusTopics must be a list of module title strings",
+                )
+            focus_topics = [t for t in focus_topics if t]
+        return await orchestrator.start(
+            payload.sessionId,
+            payload.candidate,
+            curriculum_scope=focus_topics or None,
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

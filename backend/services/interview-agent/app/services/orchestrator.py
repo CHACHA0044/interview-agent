@@ -62,7 +62,10 @@ from app.services.contract_mappers import (
     question_strategy_to_ai,
 )
 from app.services.curriculum_loader import CurriculumLoader
-from app.services.curriculum_selection import build_assessment_plan
+from app.services.curriculum_selection import (
+    build_assessment_plan,
+    resolve_selected_modules,
+)
 from app.services.decision_engine import evaluate_next_step
 from app.services.difficulty_adapter import adapt_difficulty
 from app.services.moderation import moderation_triggered
@@ -103,10 +106,37 @@ class InterviewOrchestrator:
 
     # ------------------------------------------------------------------ start
 
-    async def start(self, session_id: str, candidate: Candidate) -> AgentTurnResponse:
+    async def start(
+        self,
+        session_id: str,
+        candidate: Candidate,
+        curriculum_scope: Optional[List[str]] = None,
+    ) -> AgentTurnResponse:
         raw_candidate = candidate.model_dump()
         candidate_context, starting_diff = build_candidate_context(raw_candidate)
-        curriculum_selection = build_assessment_plan(candidate_context, self.curriculum_loader)
+
+        selected_modules = None
+        if curriculum_scope:
+            selected_modules = resolve_selected_modules(curriculum_scope, self.curriculum_loader)
+            if selected_modules:
+                _agent_log(
+                    "curriculum_scope_applied",
+                    session_id=session_id,
+                    requested_modules=curriculum_scope,
+                    resolved_module_ids=sorted(selected_modules),
+                )
+            else:
+                _agent_log(
+                    "curriculum_scope_unmatched",
+                    session_id=session_id,
+                    requested_modules=curriculum_scope,
+                )
+
+        curriculum_selection = build_assessment_plan(
+            candidate_context,
+            self.curriculum_loader,
+            selected_modules=selected_modules,
+        )
         difficulty_state = DifficultyState(
             current_difficulty=starting_diff,
             starting_difficulty=starting_diff,

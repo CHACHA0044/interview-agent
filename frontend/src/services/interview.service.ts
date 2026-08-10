@@ -115,6 +115,7 @@ async function postTurn(body: {
     minCurriculumDays?: number;
     followupBudget?: number;
     followupMaxPerQuestion?: number;
+    focusTopics?: string[];
   };
 }): Promise<ApiInterviewResponse> {
   const timeoutMs = requestTimeoutMs();
@@ -206,9 +207,13 @@ function toInterviewFeedback(
   };
 }
 
+export interface InterviewStartConfig {
+  focusTopics?: string[];
+}
+
 export async function startInterview(
   candidate: Candidate,
-  _config?: { questionCount?: number; focusTopics?: string[] }
+  config?: InterviewStartConfig
 ): Promise<{ session: InterviewSession; response: ApiInterviewResponse }> {
   const sessionId = `session-${Date.now()}`;
   const settingsState = useSettingsStore.getState();
@@ -233,6 +238,7 @@ export async function startInterview(
       minCurriculumDays: settingsState.minCurriculumDays,
       followupBudget: settingsState.followupBudget,
       followupMaxPerQuestion: settingsState.followupMaxPerQuestion,
+      focusTopics: config?.focusTopics ?? [],
     },
   });
   liveCandidateBySession.set(sessionId, candidate.member.id);

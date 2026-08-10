@@ -49,16 +49,19 @@ _FLOOR_CLAMP = {
 
 
 class InterviewConfig(BaseModel):
-    """Optional per-interview floor overrides forwarded from the frontend Settings.
+    """Optional per-interview configuration forwarded from the frontend.
 
-    Values outside the allowed range are silently clamped so stale/edge-case
-    persisted settings never break the request.
+    Carries floor overrides from the Settings page plus the requested
+    curriculum module selection (focusTopics). Numeric floors outside the
+    allowed range are silently clamped so stale/edge-case persisted settings
+    never break the request.
     """
 
     minQuestions: int = 8
     minCurriculumDays: int = 4
     followupBudget: int = 4
     followupMaxPerQuestion: int = 2
+    focusTopics: list[str] = Field(default_factory=list)
 
     @field_validator("minQuestions")
     @classmethod

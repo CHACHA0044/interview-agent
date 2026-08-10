@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { useNavigate } from "react-router";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import {
   Brain,
   BarChart3,
@@ -13,7 +12,6 @@ import {
   Cpu,
   Users,
   CheckCircle2,
-  ChevronDown,
   Activity,
   WifiOff,
   ShieldAlert,
@@ -98,83 +96,38 @@ const FEATURES = [
 ] as const;
 
 function FeatureCard({ feature }: { feature: (typeof FEATURES)[number] }) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const Icon = feature.icon;
 
   return (
     <Surface
       className={cn(
-        "col-span-4 md:col-span-4 xl:col-span-4 h-full cursor-pointer transition-all duration-300",
-        isExpanded
-          ? "border-[#D4AF37]/60 bg-[#131313] shadow-[0_0_44px_-10px_rgba(212,175,55,0.45)]"
-          : "hover:border-[#D4AF37]/35 hover:shadow-[0_0_36px_-14px_rgba(212,175,55,0.35)]"
+        "col-span-4 md:col-span-4 xl:col-span-4 h-full transition-all duration-300",
+        "hover:border-[#D4AF37]/60 hover:bg-[#131313] hover:shadow-[0_0_44px_-10px_rgba(212,175,55,0.45)]"
       )}
-      onMouseEnter={() => setIsExpanded(true)}
-      onMouseLeave={() => setIsExpanded(false)}
       padding="lg"
     >
-      <button
-        type="button"
-        onClick={() => {
-          if (!window.matchMedia("(hover: hover)").matches) {
-            setIsExpanded((value) => !value);
-          }
-        }}
-        aria-expanded={isExpanded}
-        className="w-full h-full text-left outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]/50 rounded-lg"
-      >
-        <div className="stack stack-md h-full justify-between">
-          <div className="stack stack-sm">
-            <motion.span
-              className={cn(
-                "h-11 w-11 rounded-xl bg-[#171717] border flex items-center justify-center text-[#D4AF37] transition-colors",
-                isExpanded ? "border-[#D4AF37]/50 shadow-[0_0_24px_-6px_rgba(212,175,55,0.5)]" : "border-[#262626]"
-              )}
-              whileHover={{ scale: 1.08, rotate: 6 }}
-              whileTap={{ scale: 0.95 }}
-              animate={
-                isExpanded
-                  ? { scale: [1, 1.12, 1], rotate: [0, -8, 0], transition: { duration: 0.6 } }
-                  : undefined
-              }
-            >
-              <Icon className="h-5 w-5" />
-            </motion.span>
-            <h3 className="text-base font-semibold text-white flex items-center justify-between gap-3">
-              <span>{feature.title}</span>
-              <motion.span
-                animate={{ rotate: isExpanded ? 180 : 0 }}
-                transition={{ duration: 0.25 }}
-                className="shrink-0 text-[#737373]"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </motion.span>
-            </h3>
-            <p className="text-xs text-[#A3A3A3] leading-relaxed">{feature.description}</p>
-          </div>
-
-          <AnimatePresence initial={false}>
-            {isExpanded && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-                className="overflow-hidden"
-              >
-                <ul className="stack stack-xs pt-1 border-t border-[#1F1F1F]">
-                  {feature.details.map((detail) => (
-                    <li key={detail} className="flex items-start gap-2 text-[11px] text-[#B5B5B5] leading-relaxed">
-                      <span className="mt-1 h-1 w-1 rounded-full bg-[#D4AF37] shrink-0" />
-                      {detail}
-                    </li>
-                  ))}
-                </ul>
-              </motion.div>
-            )}
-          </AnimatePresence>
+      <div className="stack stack-md h-full justify-between">
+        <div className="stack stack-sm">
+          <motion.span
+            className="h-11 w-11 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37]"
+            whileHover={{ scale: 1.08, rotate: 6 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Icon className="h-5 w-5" />
+          </motion.span>
+          <h3 className="text-base font-semibold text-white">{feature.title}</h3>
+          <p className="text-xs text-[#A3A3A3] leading-relaxed">{feature.description}</p>
         </div>
-      </button>
+
+        <ul className="stack stack-xs pt-1 border-t border-[#1F1F1F]">
+          {feature.details.map((detail) => (
+            <li key={detail} className="flex items-start gap-2 text-[11px] text-[#B5B5B5] leading-relaxed">
+              <span className="mt-1 h-1 w-1 rounded-full bg-[#D4AF37] shrink-0" />
+              {detail}
+            </li>
+          ))}
+        </ul>
+      </div>
     </Surface>
   );
 }
@@ -335,7 +288,7 @@ export function LandingPage() {
       </section>
 
       {/* Scroll-Triggered Pipeline Section (below fold) */}
-      <Section className="pt-24">
+      <Section className="pt-24 pb-24">
         <motion.div
           initial={{ opacity: 0, y: 36 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -365,7 +318,7 @@ export function LandingPage() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: idx * 0.08 }}
                 >
-                  <Surface className="h-full flex flex-col justify-between" padding="md">
+                  <Surface className="pipeline-step-card h-full flex flex-col justify-between" padding="md">
                     <div className="stack stack-sm">
                       <span className="text-xs font-mono text-[#D4AF37] font-bold">{step}</span>
                       <h3 className="text-sm font-semibold text-white">{title}</h3>
@@ -392,7 +345,7 @@ export function LandingPage() {
             <PageHeading
               align="center"
               title="Engineered for Rigorous Assessment"
-              description="Every system component is designed to deliver unbiased, highly detailed technical evaluations. Click a card to expand its engineering detail."
+              description="Every system component is designed to deliver unbiased, highly detailed technical evaluations."
             />
 
             <LayoutGrid gap="md">

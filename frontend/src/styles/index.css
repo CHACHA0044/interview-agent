@@ -230,6 +230,56 @@ textarea,
 .surface-padding-md { padding: var(--space-5); }
 .surface-padding-lg { padding: var(--space-6); }
 
+/* Traveling gold border glow for the Adaptive Assessment Pipeline step cards. */
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.pipeline-step-card {
+  position: relative;
+}
+
+.pipeline-step-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(
+    from var(--border-angle),
+    rgba(212, 175, 55, 0) 0%,
+    rgba(212, 175, 55, 0) 10%,
+    #D4AF37 22%,
+    #F3E5AB 28%,
+    rgba(212, 175, 55, 0) 40%,
+    rgba(212, 175, 55, 0) 55%,
+    #D4AF37 66%,
+    #F3E5AB 72%,
+    rgba(212, 175, 55, 0) 84%,
+    rgba(212, 175, 55, 0) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+
+.pipeline-step-card:hover::before {
+  opacity: 1;
+  animation: border-travel 2.4s linear infinite;
+}
+
+@keyframes border-travel {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
 .touch-target {
   min-height: 2.75rem;
 }
@@ -283,6 +333,150 @@ textarea,
   30% {
     transform: translateY(-6px);
     opacity: 1;
+  }
+}
+
+.brain-animated {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 200ms ease;
+}
+
+.brain-animated:hover {
+  transform: scale(1.08);
+}
+
+.brain-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.brain-synapse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: synapseFlicker 5s ease-in-out infinite;
+}
+
+.brain-sweep {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: brainSweep 3.2s ease-out infinite;
+}
+
+.brain-bloom,
+.brain-hemisphere {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.brain-animated[data-mode="listening"] .brain-synapse {
+  animation-duration: 3.2s;
+}
+
+.brain-animated[data-mode="listening"] .brain-sweep {
+  opacity: 0.35;
+  animation-duration: 3.6s;
+}
+
+.brain-animated[data-mode="processing"] .brain-synapse {
+  animation-duration: 1.5s;
+}
+
+.brain-animated[data-mode="processing"] .brain-sweep {
+  opacity: 0.55;
+  animation-duration: 1.8s;
+}
+
+.brain-animated[data-mode="processing"] .brain-bloom {
+  animation: brainBloomPulse 1.8s ease-in-out infinite;
+}
+
+.brain-animated[data-mode="processing"] > svg:first-child {
+  animation: brainBasePulse 1.6s ease-in-out infinite;
+}
+
+.brain-animated[data-mode="synthesis"] .brain-synapse {
+  animation-duration: 2.2s;
+}
+
+.brain-animated[data-mode="synthesis"] .brain-sweep {
+  opacity: 0.6;
+  animation-duration: 2.6s;
+}
+
+.brain-animated[data-mode="synthesis"] .brain-bloom {
+  animation: brainBloomPulse 1.5s ease-in-out infinite;
+}
+
+.brain-animated[data-mode="synthesis"] .brain-hemisphere {
+  animation: hemispherePulse 1.5s ease-in-out infinite;
+}
+
+.brain-animated[data-mode="synthesis"] > svg:first-child {
+  animation: brainBasePulse 1.2s ease-in-out infinite;
+}
+
+.brain-animated:hover .brain-synapse {
+  animation-duration: 1.3s;
+}
+
+.brain-animated:hover .brain-sweep {
+  opacity: 0.7;
+  animation-duration: 1.6s;
+}
+
+.brain-animated:hover .brain-bloom {
+  opacity: 0.25;
+  animation: brainBloomPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes synapseFlicker {
+  0%, 100% { opacity: 0.12; transform: scale(0.65); }
+  7%  { opacity: 0.95; transform: scale(1.25); }
+  11% { opacity: 0.22; transform: scale(0.78); }
+  15% { opacity: 0.85; transform: scale(1.05); }
+  24% { opacity: 0.18; transform: scale(0.72); }
+  45% { opacity: 0.6; transform: scale(1.12); }
+  58% { opacity: 0.14; transform: scale(0.68); }
+  76% { opacity: 0.75; transform: scale(1.18); }
+  84% { opacity: 0.16; transform: scale(0.7); }
+}
+
+@keyframes brainSweep {
+  0% { transform: scale(0.55); opacity: 0.8; }
+  60% { transform: scale(1); opacity: 0; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes brainBloomPulse {
+  0%, 100% { transform: scale(0.85); opacity: 0.12; }
+  50% { transform: scale(1.08); opacity: 0.75; }
+}
+
+@keyframes hemispherePulse {
+  0%, 100% { opacity: 0.08; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes brainBasePulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(212, 175, 55, 0)); }
+  50% { transform: scale(1.04); filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.5)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brain-animated,
+  .brain-animated *,
+  .brain-animated *::before,
+  .brain-animated *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

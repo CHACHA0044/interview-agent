@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Settings, Server, Save, Activity, AlertTriangle, Trash2, Bug, Sliders } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Settings, Server, Save, Activity, AlertTriangle, Trash2, Bug, Sliders, Copy, Check } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Button, Input, Badge } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { toast } from "sonner";
@@ -9,6 +10,7 @@ import { useGatewayHealth, type GatewayHealth } from "@/hooks/use-gateway-health
 import { clearSessionCache } from "@/services/interview.service";
 import { clearSessionSchedule } from "@/services/session.schedule";
 import { LayoutContainer, Section, PageHeading, Surface, Stack, Cluster } from "@/components/layout/system";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { cn } from "@/lib/cn";
 
 interface HealthVisual {
@@ -109,6 +111,32 @@ export function SettingsPage() {
 
   const visual = resolveHealthVisual(health);
 
+  const prefersReducedMotion = useReducedMotion();
+
+  const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
+  const handleCopyEndpoint = () => {
+    if (copied) return;
+    navigator.clipboard
+      .writeText(apiEndpoint)
+      .then(() => {
+        setCopied(true);
+        toast.success("Endpoint copied to clipboard");
+        if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+        copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {
+        toast.error("Could not copy endpoint");
+      });
+  };
+
   return (
     <PageTransition>
       <Section density="tight">
@@ -196,11 +224,55 @@ export function SettingsPage() {
                 <label htmlFor="endpoint" className="text-xs font-medium text-[#A3A3A3] block">
                   HTTP Target Endpoint
                 </label>
-                <Input
-                  id="endpoint"
-                  value={apiEndpoint}
-                  onChange={(e) => setApiEndpoint(e.target.value)}
-                />
+                <div className="relative">
+                  <Input
+                    id="endpoint"
+                    className="pr-12"
+                    value={apiEndpoint}
+                    onChange={(e) => setApiEndpoint(e.target.value)}
+                  />
+                  <motion.button
+                    type="button"
+                    onClick={handleCopyEndpoint}
+                    whileHover={prefersReducedMotion ? undefined : { scale: 1.12 }}
+                    whileTap={prefersReducedMotion ? undefined : { scale: 0.88 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    aria-label={copied ? "Endpoint copied" : "Copy endpoint"}
+                    title="Copy endpoint"
+                    className={cn(
+                      "absolute right-1.5 top-1/2 -translate-y-1/2 z-10 flex h-8 w-8 items-center justify-center rounded-lg border transition-colors duration-200",
+                      copied
+                        ? "border-[#22C55E]/40 bg-[#22C55E]/10 text-[#22C55E]"
+                        : "border-[#262626] bg-[#171717] text-[#D4AF37] hover:border-[#D4AF37]/50 hover:bg-[#1F1F1F]"
+                    )}
+                  >
+                    <AnimatePresence mode="wait" initial={false}>
+                      {copied ? (
+                        <motion.span
+                          key="check"
+                          initial={{ opacity: 0, scale: 0.4, rotate: -30 }}
+                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                          exit={{ opacity: 0, scale: 0.4, rotate: 30 }}
+                          transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+                          className="flex"
+                        >
+                          <Check className="h-4 w-4" />
+                        </motion.span>
+                      ) : (
+                        <motion.span
+                          key="copy"
+                          initial={{ opacity: 0, scale: 0.4, rotate: 30 }}
+                          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                          exit={{ opacity: 0, scale: 0.4, rotate: -30 }}
+                          transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+                          className="flex"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </motion.button>
+                </div>
                 <p className="text-[10px] text-[#737373]">
                   Base URL of the Interview Agent Gateway (POST /api/interview).
                 </p>

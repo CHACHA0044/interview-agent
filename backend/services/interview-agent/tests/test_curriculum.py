@@ -17,7 +17,12 @@ from unittest.mock import Mock
 
 from app.schemas.domain import CandidateContext, CandidateTier
 from app.services.curriculum_loader import CurriculumLoader, CurriculumDayDef
-from app.services.curriculum_selection import extract_role_keywords, score_day_relevance, build_assessment_plan
+from app.services.curriculum_selection import (
+    extract_role_keywords,
+    score_day_relevance,
+    build_assessment_plan,
+    resolve_selected_modules,
+)
 
 
 def test_module_day_ranges_expand_to_all_member_days():
@@ -148,3 +153,95 @@ def test_build_assessment_plan_empty():
     assert plan.assessment_priorities == [1, 2, 3, 4]
     assert plan.selected_days == [1, 2, 3, 4]
     assert plan.relevant_concepts == []
+
+
+def test_resolve_selected_modules_maps_titles_to_ids():
+    import os
+
+    os.environ.setdefault("CURRICULUM_PATH", os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "curriculum.json"))
+    loader = CurriculumLoader()
+
+    assert resolve_selected_modules(
+        ["Environment & Tooling", "Data Foundations"], loader
+    ) == {1, 2}
+
+    # Unknown titles are dropped; when nothing resolves there is no scope constraint.
+    assert resolve_selected_modules(["Bogus Module"], loader) is None
+    assert resolve_selected_modules([], loader) is None
+    assert resolve_selected_modules(None, loader) is None
+
+
+def test_build_assessment_plan_restricted_to_selected_modules():
+    mock_loader = Mock(spec=CurriculumLoader)
+
+    def mock_get_day(day_id: int):
+        days = {
+            1: CurriculumDayDef(day=1, title="Intro", type="SETUP", tools=["Python"]),
+            2: CurriculumDayDef(day=2, title="API", type="BUILD", tools=["FastAPI"]),
+            3: CurriculumDayDef(day=3, title="Database", type="BUILD", tools=["SQL"]),
+            4: CurriculumDayDef(day=4, title="Pipelines", type="THEORY", tools=["Airflow"]),
+            5: CurriculumDayDef(day=5, title="Warehouse", type="THEORY", tools=["BigQuery"]),
+            6: CurriculumDayDef(day=6, title="ETL", type="BUILD", tools=["dbt"]),
+            7: CurriculumDayDef(day=7, title="Modeling", type="THEORY", tools=["Looker"]),
+        }
+        return days.get(day_id)
+
+    def mock_get_module(day_id: int):
+        return 1 if day_id <= 3 else 2
+
+    mock_loader.get_day.side_effect = mock_get_day
+    mock_loader.get_module_for_day.side_effect = mock_get_module
+
+    candidate = CandidateContext(
+        member_id="CAND-03",
+        name="Test 3",
+        job_role="Data Engineer",
+        years_experience=5,
+        tier=CandidateTier.STRONG,
+        failed_days=[1, 4, 5, 6, 7],
+        skipped_days=[],
+        weak_days=[],
+        strong_days=[],
+    )
+
+    plan = build_assessment_plan(candidate, mock_loader, selected_modules={2})
+
+    # Only module-2 days survive the scope filter (4 distinct days, no fallback needed).
+    assert plan.assessment_priorities == [4, 5, 6, 7]
+    assert plan.selected_days == [4, 5, 6, 7]
+    assert plan.selected_modules == [2]
+    assert {mock_get_module(d) for d in plan.assessment_priorities} == {2}
+
+
+def test_build_assessment_plan_thin_module_falls_back_to_floor():
+    mock_loader = Mock(spec=CurriculumLoader)
+
+    def mock_get_day(day_id: int):
+        return CurriculumDayDef(day=day_id, title=f"Day {day_id}", type="BUILD", tools=[])
+
+    def mock_get_module(day_id: int):
+        return 1 if day_id <= 3 else 2
+
+    mock_loader.get_day.side_effect = mock_get_day
+    mock_loader.get_module_for_day.side_effect = mock_get_module
+    mock_loader.day_map = {1: None, 2: None, 3: None, 4: None}
+
+    candidate = CandidateContext(
+        member_id="CAND-04",
+        name="Test 4",
+        job_role="Dev",
+        years_experience=1,
+        tier=CandidateTier.NOVICE,
+        failed_days=[1],
+        skipped_days=[],
+        weak_days=[],
+        strong_days=[],
+    )
+
+    # Module 1 only spans 3 days; the plan must still reach the 4-day floor,
+    # preferring the selected module's own days before the general curriculum.
+    plan = build_assessment_plan(candidate, mock_loader, selected_modules={1})
+
+    assert len(plan.assessment_priorities) == 4
+    assert plan.assessment_priorities[0] == 1
+    assert plan.assessment_priorities[:3] == [1, 2, 3]

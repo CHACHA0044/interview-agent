@@ -30,7 +30,26 @@ def test_start_contract_forwards_interview_config(client, fake_agent):
         "minCurriculumDays": 4,
         "followupBudget": 3,
         "followupMaxPerQuestion": 2,
+        "focusTopics": [],
     }
+
+
+def test_start_contract_forwards_focus_topics(client, fake_agent):
+    resp = client.post(
+        "/api/interview",
+        json={
+            "sessionId": "cfg-3",
+            "candidate": make_candidate(),
+            "interviewConfig": {
+                "focusTopics": ["Data Foundations", "LLM Core, Prompting & Fine-Tuning"],
+            },
+        },
+    )
+    assert resp.status_code == 200
+    assert fake_agent.start_calls[0]["interviewConfig"]["focusTopics"] == [
+        "Data Foundations",
+        "LLM Core, Prompting & Fine-Tuning",
+    ]
 
 
 def test_start_contract_clamps_out_of_range_interview_config(client, fake_agent):
@@ -48,6 +67,7 @@ def test_start_contract_clamps_out_of_range_interview_config(client, fake_agent)
         "minCurriculumDays": 4,
         "followupBudget": 4,
         "followupMaxPerQuestion": 1,
+        "focusTopics": [],
     }
 
 

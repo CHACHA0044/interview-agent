@@ -1,10 +1,9 @@
-import { useEffect, useState, Fragment } from "react";
+import { useState, Fragment } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import type { LucideIcon } from "lucide-react";
 import {
   Brain,
   CalendarRange,
-  ChevronDown,
   ChevronRight,
   Cpu,
   Database,
@@ -59,78 +58,28 @@ const FLOW_STEPS: FlowStepData[] = [
   },
 ];
 
-const AUTOPLAY_INTERVAL_MS = 2500;
-
 function FlowConnector() {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
     <>
-      <div className="hidden xl:flex items-center justify-center shrink-0 w-14 self-center">
+      {/* Desktop horizontal connector */}
+      <div className="hidden xl:flex items-center justify-center shrink-0 w-14 xl:self-start xl:mt-[3.75rem]">
         <div className="relative flex items-center justify-center w-full h-10">
           <div className="absolute inset-x-0 h-px bg-[#262626] rounded-full" />
-          <motion.div
-            className="absolute inset-x-0 h-px rounded-full bg-gradient-to-r from-transparent via-[#D4AF37]/70 to-transparent"
-            style={{ backgroundSize: "200% 100%" }}
-            animate={
-              prefersReducedMotion
-                ? undefined
-                : { backgroundPosition: ["0% 50%", "200% 50%"] }
-            }
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.div
-            className="absolute h-1.5 w-1.5 rounded-full bg-[#D4AF37] shadow-[0_0_10px_rgba(212,175,55,0.9)] inset-y-0 my-auto"
-            animate={
-              prefersReducedMotion ? undefined : { left: ["0%", "100%"] }
-            }
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.span
-            className="relative text-[#D4AF37]"
-            animate={
-              prefersReducedMotion
-                ? undefined
-                : { opacity: [0.4, 1, 0.4], scale: [0.9, 1.05, 0.9] }
-            }
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </motion.span>
+          <span className="relative h-1.5 w-1.5 shrink-0 rounded-full bg-[#3F3F3F]" />
+          <span className="relative text-[#3F3F3F]">
+            <ChevronRight className="h-4 w-4 opacity-50" />
+          </span>
         </div>
       </div>
 
+      {/* Mobile vertical connector */}
       <div className="flex xl:hidden items-center justify-center w-full py-1">
         <div className="relative flex items-center justify-center h-10 w-6">
           <div className="absolute inset-y-0 w-px bg-[#262626] rounded-full" />
-          <motion.div
-            className="absolute inset-y-0 w-px rounded-full bg-gradient-to-b from-transparent via-[#D4AF37]/70 to-transparent"
-            style={{ backgroundSize: "100% 200%" }}
-            animate={
-              prefersReducedMotion
-                ? undefined
-                : { backgroundPosition: ["50% 0%", "50% 200%"] }
-            }
-            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-          />
-          <motion.div
-            className="absolute h-1.5 w-1.5 rounded-full bg-[#D4AF37] shadow-[0_0_10px_rgba(212,175,55,0.9)] inset-x-0 mx-auto"
-            animate={
-              prefersReducedMotion ? undefined : { top: ["0%", "100%"] }
-            }
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          />
-          <motion.span
-            className="relative text-[#D4AF37] rotate-90"
-            animate={
-              prefersReducedMotion
-                ? undefined
-                : { opacity: [0.4, 1, 0.4], scale: [0.9, 1.05, 0.9] }
-            }
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </motion.span>
+          <span className="relative h-1.5 w-1.5 shrink-0 rounded-full bg-[#3F3F3F]" />
+          <span className="relative text-[#3F3F3F] rotate-90">
+            <ChevronRight className="h-4 w-4 opacity-50" />
+          </span>
         </div>
       </div>
     </>
@@ -141,107 +90,114 @@ function FlowStep({
   step,
   index,
   active = false,
+  onActivate,
+  onDeactivate,
 }: {
   step: FlowStepData;
   index: number;
   active?: boolean;
+  onActivate: () => void;
+  onDeactivate: () => void;
 }) {
-  const [isLocallyOpen, setIsLocallyOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
   const Icon = step.icon;
-  // Expansion is strictly user-driven (click, hover, or focus). The autoplay
-  // `active` flag only highlights the current step — it never opens a card.
-  const isExpanded = isLocallyOpen;
 
   return (
     <motion.div
-      onHoverStart={() => setIsLocallyOpen(true)}
-      onHoverEnd={() => setIsLocallyOpen(false)}
-      onClick={() => setIsLocallyOpen((value) => !value)}
-      onFocus={() => setIsLocallyOpen(true)}
-      onBlur={() => setIsLocallyOpen(false)}
-      whileHover={prefersReducedMotion ? undefined : { y: -3 }}
-      transition={{ type: "spring", stiffness: 280, damping: 22 }}
+      role="button"
       tabIndex={0}
+      aria-expanded={active}
+      onClick={onActivate}
+      onMouseEnter={onActivate}
+      onMouseLeave={onDeactivate}
+      onFocus={onActivate}
+      onBlur={onDeactivate}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onActivate();
+        }
+      }}
+      animate={{ height: active ? "auto" : "10rem" }}
+      transition={
+        prefersReducedMotion ? { duration: 0 } : { duration: 0.35, ease: [0.16, 1, 0.3, 1] }
+      }
       className={cn(
-        "group relative flex-1 min-w-0 cursor-pointer rounded-2xl border bg-[#0F0F0F] p-5 outline-none transition-colors duration-300 flex flex-col",
-        isExpanded
-          ? "border-[#D4AF37]/45 bg-[#131313]"
-          : active
-            ? "border-[#D4AF37]/30"
-            : "border-[#262626] hover:border-[#D4AF37]/30",
-        "focus-visible:ring-1 focus-visible:ring-[#D4AF37]/60"
+        "group relative flex-1 min-w-0 cursor-pointer rounded-2xl border bg-[#0F0F0F] p-5 outline-none overflow-hidden transition-colors duration-300",
+        active
+          ? "border-[#C9A227]/35 bg-[#121212] shadow-[0_0_28px_-14px_rgba(201,162,39,0.55)]"
+          : "border-[#262626] hover:border-[#D4AF37]/25 hover:bg-[#111111]",
+        "focus-visible:ring-1 focus-visible:ring-[#C9A227]/60"
       )}
+      aria-label={`Step ${index + 1}: ${step.title}`}
     >
       <div className="flex items-start gap-3">
-        <span className="relative h-10 w-10 shrink-0 rounded-xl bg-[#171717] border border-[#262626] flex items-center justify-center text-[#D4AF37] transition-colors duration-300 group-hover:border-[#D4AF37]/40">
+        <span
+          className={cn(
+            "h-10 w-10 shrink-0 rounded-xl bg-[#171717] border flex items-center justify-center transition-colors duration-300",
+            active
+              ? "border-[#C9A227]/40 text-[#C9A227]"
+              : "border-[#262626] text-[#D4AF37] group-hover:border-[#D4AF37]/40"
+          )}
+        >
           <Icon className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold text-white leading-snug">{step.title}</h3>
-          <span className="text-[10px] font-mono tracking-widest text-[#D4AF37]/70">
+          <h3
+            className={cn(
+              "text-sm font-semibold leading-snug transition-colors duration-300",
+              active ? "text-white" : "text-white/75"
+            )}
+          >
+            {step.title}
+          </h3>
+          <span
+            className={cn(
+              "text-[10px] font-mono tracking-widest transition-colors duration-300",
+              active ? "text-[#C9A227]" : "text-[#737373]"
+            )}
+          >
             STEP {String(index + 1).padStart(2, "0")}
           </span>
         </div>
-        <motion.span
-          animate={prefersReducedMotion ? undefined : { rotate: isExpanded ? 180 : 0 }}
-          transition={{ duration: 0.25 }}
-          className="shrink-0 text-[#A3A3A3] group-hover:text-[#D4AF37] transition-colors duration-300"
-        >
-          <ChevronDown className="h-4 w-4" />
-        </motion.span>
       </div>
 
-      {active ? (
-        <span className="absolute top-4 right-12 h-1.5 w-1.5 rounded-full bg-[#D4AF37] animate-pulse" />
-      ) : null}
-
-      {/* Fixed-height slot: reserves space up front so expanding/contracting a
-          card never reflows the row or pushes content below the flow down. */}
-      <div className="h-28 overflow-hidden">
-        <AnimatePresence initial={false}>
-          {isExpanded && (
-            <motion.div
-              key="description"
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <p className="mt-3 pt-3 text-xs leading-relaxed text-[#B5B5B5] border-t border-[#262626]">
-                {step.description}
-              </p>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+      {/* Description lives inline inside the expanded box — nowhere else. */}
+      <AnimatePresence initial={false}>
+        {active && (
+          <motion.p
+            key="description"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={
+              prefersReducedMotion ? { duration: 0 } : { duration: 0.25, ease: [0.16, 1, 0.3, 1] }
+            }
+            className="mt-3 text-xs leading-relaxed text-[#B5B5B5]"
+          >
+            {step.description}
+          </motion.p>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
 function AgentFlow() {
-  const prefersReducedMotion = useReducedMotion();
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-
-  useEffect(() => {
-    if (prefersReducedMotion || isPaused) return;
-    const interval = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % FLOW_STEPS.length);
-    }, AUTOPLAY_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [prefersReducedMotion, isPaused]);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   return (
-    <div
-      className="flex flex-col xl:flex-row xl:items-start gap-4 xl:gap-0"
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-    >
+    <div className="flex flex-col xl:flex-row gap-4 xl:gap-0 xl:items-start">
       {FLOW_STEPS.map((step, index) => (
         <Fragment key={step.title}>
           {index > 0 && <FlowConnector />}
-          <FlowStep step={step} index={index} active={index === activeIndex} />
+          <FlowStep
+            step={step}
+            index={index}
+            active={index === activeIndex}
+            onActivate={() => setActiveIndex(index)}
+            onDeactivate={() => setActiveIndex(null)}
+          />
         </Fragment>
       ))}
     </div>
@@ -251,7 +207,7 @@ function AgentFlow() {
 export function AboutPage() {
   return (
     <PageTransition>
-      <Section density="tight">
+      <section className="flex items-start md:items-center justify-center pt-24 pb-12 ">
         <LayoutContainer size="reading" className="stack stack-lg">
           <PageHeading
             align="center"
@@ -269,7 +225,7 @@ export function AboutPage() {
             This route preserves existing business behavior while documenting the architecture model, platform boundaries, and frontend foundation.
           </p>
         </LayoutContainer>
-      </Section>
+      </section>
 
       <Section>
         <LayoutContainer size="content">
@@ -315,7 +271,7 @@ export function AboutPage() {
         </LayoutContainer>
       </Section>
 
-      <Section>
+      <Section className="pt-20 pb-20">
         <LayoutContainer size="content">
           <Stack gap="lg">
             <div className="stack stack-sm items-center text-center">
@@ -325,8 +281,8 @@ export function AboutPage() {
               </Badge>
               <h2 className="text-2xl font-bold text-white tracking-tight">Agent Interview Flow</h2>
               <p className="text-sm text-[#A3A3A3] max-w-2xl mx-auto">
-                A self-running tour of how a candidate moves through the multi-agent interview engine, from profile
-                calibration to final feedback. Hover, tap, or let it auto-advance.
+                How a candidate moves through the multi-agent interview engine, from profile calibration to final
+                feedback. Hover or tap a stage to expand its details.
               </p>
             </div>
 

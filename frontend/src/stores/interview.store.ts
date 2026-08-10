@@ -42,6 +42,7 @@ import type {
   InterviewLiveMetadata,
 } from "@/types";
 import * as interviewService from "@/services/interview.service";
+import type { InterviewStartConfig } from "@/services/interview.service";
 import {
   clearSessionSchedule,
   readSessionSchedule,
@@ -73,7 +74,7 @@ interface InterviewState {
   ttlSeconds: number;
 
   /** Actions */
-  startInterview: (candidate: Candidate) => Promise<void>;
+  startInterview: (candidate: Candidate, config?: InterviewStartConfig) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
   endInterview: () => Promise<void>;
   clearError: () => void;
@@ -103,10 +104,10 @@ const initialState = {
 export const useInterviewStore = create<InterviewState>((set, get) => ({
   ...initialState,
 
-  startInterview: async (candidate: Candidate) => {
+  startInterview: async (candidate: Candidate, config?: InterviewStartConfig) => {
     set({ isLoading: true, error: null });
     try {
-      const { session, response } = await interviewService.startInterview(candidate);
+      const { session, response } = await interviewService.startInterview(candidate, config);
       const systemMessage: InterviewMessage = {
         id: `msg-system-${Date.now()}`,
         role: "system",

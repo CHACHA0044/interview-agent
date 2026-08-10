@@ -8,7 +8,7 @@ export function RootLayout() {
     <div className="min-h-screen bg-[#070707] text-[#FFFFFF] relative selection:bg-[#D4AF37]/20 selection:text-[#FFFFFF] flex flex-col">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only fixed top-4 left-4 z-[70] rounded-md bg-[#D4AF37] px-4 py-2 text-xs font-semibold text-[#0A0A0A]"
+        className="fixed top-4 left-4 z-[70] -translate-y-[200%] focus:translate-y-0 rounded-md bg-[#D4AF37] px-4 py-2 text-xs font-semibold text-[#0A0A0A] shadow-lg shadow-black/40 transition-transform duration-200"
       >
         Skip to main content
       </a>

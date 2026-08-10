@@ -207,3 +207,35 @@ async def test_moderation_terminates_interview():
     final_state = AgentState.model_validate(res.agentState)
     assert final_state.completion.is_eligible_for_completion is True
     assert final_state.history[-1].score == 0.0
+
+
+async def test_start_restricted_to_selected_modules():
+    loader = CurriculumLoader()
+    orchestrator = InterviewOrchestrator(loader, FakeAIClient(scores=[9.0] * 50))
+
+    res = await orchestrator.start(
+        "abc-scope",
+        CANDIDATE,
+        curriculum_scope=["LLM Core, Prompting & Fine-Tuning"],
+    )
+
+    plan = res.agentState["interview_plan"]
+    days = {q["day"] for q in plan}
+    # Module 4 spans days 11-15; the whole plan must stay inside it.
+    assert days <= set(range(11, 16))
+    assert len(days) >= 4
+
+
+async def test_start_scope_with_unmatched_titles_falls_back_to_general_plan():
+    loader = CurriculumLoader()
+    orchestrator = InterviewOrchestrator(loader, FakeAIClient(scores=[9.0] * 50))
+
+    # No module title matches, so no scope constraint is applied.
+    res = await orchestrator.start(
+        "abc-scope-unmatched",
+        CANDIDATE,
+        curriculum_scope=["Nonexistent Module"],
+    )
+
+    plan = res.agentState["interview_plan"]
+    assert len(plan) >= 4

@@ -1,12 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router";
 import { Search, UserCheck, Play, Filter, Award, ChevronRight } from "lucide-react";
-import { Badge, Input, Button, SkeletonCard, EmptyState, Progress, Avatar } from "@/components/ui";
+import { Badge, Input, Button, SkeletonCard, EmptyState, Progress, Avatar, CustomSelect } from "@/components/ui";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { CandidateDetailsModal } from "@/components/features/candidates/CandidateDetailsModal";
 import { useCandidates } from "@/hooks/use-candidates";
 import type { Candidate } from "@/types";
-import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface, Cluster } from "@/components/layout/system";
+import { LayoutContainer, Section, LayoutGrid, PageHeading, Surface } from "@/components/layout/system";
 
 export function CandidatesPage() {
   const navigate = useNavigate();
@@ -15,7 +15,18 @@ export function CandidatesPage() {
   const [selectedRole, setSelectedRole] = useState<string>("ALL");
   const [detailCandidate, setDetailCandidate] = useState<Candidate | null>(null);
 
-  const roles = ["ALL", "AI Engineer", "Senior Data Engineer", "DevOps Engineer", "Software Engineer"];
+  // Role filter options are derived from the actual distinct jobRole values in candidates.json so
+  // they can never drift from the real roster. We keep exact role strings (no merging) so each
+  // option maps one-to-one to a roster role — e.g. "Software Engineer" and "Backend Software
+  // Engineer" stay separate rather than being grouped, which would blur per-role counts. Options
+  // are sorted alphabetically with "All Roles" pinned first as the default/reset choice.
+  const roleOptions = useMemo(() => {
+    const distinct = Array.from(new Set((candidates ?? []).map((c) => c.member.jobRole)));
+    return [
+      { value: "ALL", label: "All Roles" },
+      ...distinct.sort((a, b) => a.localeCompare(b)).map((role) => ({ value: role, label: role })),
+    ];
+  }, [candidates]);
 
   const filteredCandidates = candidates?.filter((c) => {
     const matchesSearch =
@@ -23,7 +34,7 @@ export function CandidatesPage() {
       c.member.jobRole.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.member.id.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesRole = selectedRole === "ALL" || c.member.jobRole.toLowerCase().includes(selectedRole.toLowerCase());
+    const matchesRole = selectedRole === "ALL" || c.member.jobRole === selectedRole;
 
     return matchesSearch && matchesRole;
   });
@@ -54,7 +65,7 @@ export function CandidatesPage() {
 
           <Surface padding="md" className="stack stack-md">
             <LayoutGrid gap="md" className="items-center">
-              <div className="col-span-4 md:col-span-4 xl:col-span-4">
+              <div className="col-span-4 md:col-span-8 xl:col-span-8">
                 <Input
                   placeholder="Search candidate by name, role, ID..."
                   value={searchQuery}
@@ -62,20 +73,17 @@ export function CandidatesPage() {
                   icon={<Search className="h-4 w-4" />}
                 />
               </div>
-              <div className="col-span-4 md:col-span-4 xl:col-span-8">
-                <Cluster gap="sm" className="overflow-x-auto pb-1">
-                  {roles.map((role) => (
-                    <Button
-                      key={role}
-                      variant="chip"
-                      size="chip"
-                      pressed={selectedRole === role}
-                      onClick={() => setSelectedRole(role)}
-                    >
-                      {role}
-                    </Button>
-                  ))}
-                </Cluster>
+              <div className="col-span-4 md:col-span-8 xl:col-span-4">
+                {/* Animated role filter dropdown — same CustomSelect pattern as the candidate
+                    selector on Interview Setup. "All Roles" is the default/reset option; picking
+                    a role closes the list and filters the grid by exact jobRole match. */}
+                <CustomSelect
+                  value={selectedRole}
+                  onChange={setSelectedRole}
+                  options={roleOptions}
+                  ariaLabel="Filter candidates by role"
+                  triggerIcon={<Filter className="h-4 w-4 text-[#D4AF37]" />}
+                />
               </div>
             </LayoutGrid>
           </Surface>
